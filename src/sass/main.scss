@@ -1,0 +1,229 @@
+$-base-space: 1rem * 0.5;
+$space-half: $-base-space * 0.5;
+$space-1: $-base-space * 1;
+$space-one-and-half: $-base-space * 1.5;
+$space-2: $-base-space * 2;
+$space-3: $-base-space * 3;
+$space-5: $-base-space * 5;
+$space-6: $-base-space * 6;
+$space-10: $-base-space * 10;
+$space-12: $-base-space * 12;
+$space-20: $-base-space * 20;
+$authors-author-width: $space-20;
+
+// Breakpoint note
+// mobile: 0px ~ 768px
+// desktop: 769px ~
+$break-point-mobile-desktop: 769px;
+$container-max-width: 940px;
+
+// Colors defined at bootstrap
+// https://getbootstrap.jp/docs/5.0/utilities/colors/
+$blue: #0d6efd;
+$indigo: #6610f2;
+$purple: #6f42c1;
+$pink: #d63384;
+$red: #dc3545;
+$orange: #fd7e14;
+$yellow: #ffc107;
+$green: #198754;
+$teal: #20c997;
+$cyan: #0dcaf0;
+$white: #fff;
+$gray-100: #f8f9fa;
+$gray-200: #e9ecef;
+$gray-300: #dee2e6;
+$gray-400: #ced4da;
+$gray-500: #adb5bd;
+$gray-600: #6c757d;
+$gray-700: #495057;
+$gray-800: #343a40;
+$gray-900: #212529;
+$black: #000;
+$primary: $blue;
+$secondary: $gray-600;
+$success: $green;
+$info: $cyan;
+$warning: $yellow;
+$danger: $red;
+$light: $gray-100;
+$dark: $gray-900;
+
+// custom color
+$dark-inverse: #fff;
+$alternative-background-color: #eee;
+
+@mixin desktop {
+  @media screen and (min-width: $break-point-mobile-desktop) {
+    @content;
+  }
+}
+
+@mixin mobile {
+  @media screen and (max-width: $break-point-mobile-desktop) {
+    @content;
+  }
+}
+
+@each $x, $y in ((16, 9), ) {
+  .ratio-#{$x}x#{$y} {
+    width: 100%;
+    aspect-ratio: #{$x} / #{$y};
+    display: block;
+
+    & > * {
+      object-fit: cover;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+.dark-color-scheme {
+  color: $dark-inverse;
+  background-color: $dark;
+}
+
+.side-by-side {
+  display: flex;
+  gap: $space-3;
+
+  @include desktop {
+    align-items: center;
+
+    & > * * {
+      width: 100%;
+    }
+  }
+
+  @include mobile {
+    flex-direction: column;
+
+    & * {
+      width: 100%;
+    }
+  }
+}
+
+.dots {
+  display: flex;
+  padding: 10px 0;
+  justify-content: center;
+}
+
+.dot {
+  border: none;
+  width: 10px;
+  height: 10px;
+  background: #c5c5c5;
+  border-radius: 50%;
+  margin: 0 5px;
+  padding: 5px;
+  cursor: pointer;
+}
+
+.dot:focus {
+  outline: none;
+}
+
+.dot-active {
+  background: #000;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+figure {
+  margin: 0;
+}
+
+.container {
+  @include desktop {
+    max-width: $container-max-width;
+    margin: 0 auto;
+    padding: 0 $space-3;
+  }
+
+  @include mobile {
+    padding: 0 $space-1;
+  }
+}
+
+.section {
+  padding: $space-12 $space-2;
+  margin-bottom: $space-5;
+
+  &:first-child {
+    padding-top: 0;
+  }
+
+  & + .section {
+    margin-top: $space-5;
+  }
+}
+
+.title {
+  text-align: center;
+}
+
+.author {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-half;
+
+  & > * {
+    text-align: center;
+  }
+}
+
+.authors {
+  display: grid;
+  gap: $space-3;
+  padding: 0;
+  list-style: none;
+  justify-content: center;
+  grid-template-columns: repeat(auto-fit, $authors-author-width);
+}
+
+.centerize {
+  text-align: center;
+}
+
+.citation {
+  & > pre {
+    overflow-x: auto;
+    padding: $space-6;
+    background: $alternative-background-color;
+  }
+}
+
+.button {
+  font-weight: bold;
+  color: $gray-100;
+  background-color: $secondary;
+  gap: $space-1;
+  padding: $space-1 $space-one-and-half;
+  border-radius: $space-one-and-half;
+  display: inline-flex;
+  align-items: center;
+
+  &:hover {
+    background-color: $gray-700;
+  }
+}
+
+.horizontal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-3;
+  padding: 0;
+  list-style: none;
+  justify-content: center;
+}
+
+a {
+  text-decoration: none;
+}
