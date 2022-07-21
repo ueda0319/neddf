@@ -1,0 +1,78 @@
+$-base-space: 1rem * 0.5;
+$space-half: $-base-space * 0.5;
+$space-1: $-base-space * 1;
+$space-2: $-base-space * 2;
+$space-3: $-base-space * 3;
+$space-6: $-base-space * 6;
+$space-12: $-base-space * 12;
+
+// Breakpoint note
+// mobile: 0px ~ 768px
+// desktop: 769px ~
+$break-point-mobile-desktop: 769px;
+$container-max-width: 940px;
+$alternative-background-color: #eee;
+
+@mixin desktop {
+  @media screen and (min-width: $break-point-mobile-desktop) {
+    @content;
+  }
+}
+
+@mixin mobile {
+  @media screen and (max-width: $break-point-mobile-desktop) {
+    @content;
+  }
+}
+
+html,
+body {
+  margin: 0;
+}
+
+.container {
+  @include desktop {
+    max-width: $container-max-width;
+    margin: 0 auto;
+    padding: 0 $space-3;
+  }
+
+  @include mobile {
+    padding: 0 $space-1;
+  }
+}
+
+.section {
+  padding: $space-12 0;
+}
+
+.title {
+  text-align: center;
+}
+
+.author {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $space-half;
+}
+
+.horizon {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: $space-3;
+  padding: 0;
+  list-style: none;
+
+  // &.centerize {
+
+  // }
+}
+
+.citation {
+  & > pre {
+    overflow-x: auto;
+    padding: $space-6;
+    background: $alternative-background-color;
+  }
+}
