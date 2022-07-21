@@ -1,0 +1,25 @@
+{
+  "name": "ascender",
+  "version": "0.0.1",
+  "description": "",
+  "scripts": {
+    "build": "sass src/sass/main.scss:build/main.css",
+    "watch": "sass --watch src/sass/main.scss:build/main.css",
+    "lint": "prettier --check '**/*.{html,js}' && stylelint **/*.scss",
+    "lint:fix": "prettier --write '**/*.{html,js}' && stylelint --fix **/*.scss"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cvpaperchallenge/Ascender.git"
+  },
+  "author": "cvpaper.challenge XCCV group",
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^2.7.1",
+    "sass": "^1.53.0",
+    "stylelint": "^14.9.1",
+    "stylelint-config-standard": "^26.0.0",
+    "stylelint-config-standard-scss": "^4.0.0",
+    "stylelint-scss": "^4.3.0"
+  }
+}
