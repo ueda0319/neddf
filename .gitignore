@@ -6,6 +6,7 @@ __pycache__
 .mypy_cache
 .pytest_cache
 .venv
+!data/test_metalball
 !data/README.md
 !models/README.md
 !outputs/README.md
