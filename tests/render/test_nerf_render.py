@@ -3,7 +3,7 @@ from typing import Dict, Final
 import torch
 from torch import Tensor
 
-from melon.render import NeRFRender
+from neddf.render import NeRFRender
 
 
 class TestNeRFRender:

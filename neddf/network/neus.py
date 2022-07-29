@@ -3,7 +3,7 @@ from typing import Callable, Dict, Final, List, Optional
 import torch
 from torch import Tensor, nn
 
-from melon.nn_module import PositionalEncoding
+from neddf.nn_module import PositionalEncoding
 
 
 class NeuS(nn.Module):
@@ -58,7 +58,9 @@ class NeuS(nn.Module):
         layers_sdf.append(nn.Linear(input_sdf_dim, sdf_layer_width))
         for layer_id in range(sdf_layer_count - 1):
             if layer_id in skips:
-                layers_sdf.append(nn.Linear(sdf_layer_width + input_sdf_dim, sdf_layer_width))
+                layers_sdf.append(
+                    nn.Linear(sdf_layer_width + input_sdf_dim, sdf_layer_width)
+                )
             else:
                 layers_sdf.append(nn.Linear(sdf_layer_width, sdf_layer_width))
         layers_col.append(nn.Linear(input_col_dim, col_layer_width))
@@ -130,7 +132,7 @@ class NeuS(nn.Module):
             grad_outputs=d_output,
             create_graph=True,
             retain_graph=True,
-            only_inputs=True
+            only_inputs=True,
         )[0].reshape(-1, 3)
 
         hx = torch.cat([input_pos, embed_dir, gradients, sdf_feature], dim=1)
@@ -138,10 +140,10 @@ class NeuS(nn.Module):
             hx = self.activation(layer(hx))
         color: Tensor = hx
 
-        ex: Tensor = torch.exp(- self.variance * 10.0 * sdf)
-        density: Tensor = s * ex * torch.reciprocal(torch.square(1+ex))
-
-
+        ex: Tensor = torch.exp(-self.variance * 10.0 * sdf)
+        density: Tensor = (
+            self.variance * 10.0 * ex * torch.reciprocal(torch.square(1 + ex))
+        )
 
         output_dict: Dict[str, Tensor] = {
             "sdf": sdf.reshape(batch_size, sampling, 3),

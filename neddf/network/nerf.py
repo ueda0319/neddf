@@ -3,7 +3,7 @@ from typing import Callable, Dict, Final, List, Optional
 import torch
 from torch import Tensor, nn
 
-from melon.nn_module import PositionalEncoding
+from neddf.nn_module import PositionalEncoding
 
 
 class NeRF(nn.Module):

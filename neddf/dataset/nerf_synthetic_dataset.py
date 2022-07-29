@@ -7,7 +7,7 @@ import numpy as np
 from numpy import ndarray
 from scipy.spatial.transform import Rotation
 
-from melon.dataset.base_dataset import BaseDataset
+from neddf.dataset.base_dataset import BaseDataset
 
 
 class NeRFSyntheticDataset(BaseDataset):

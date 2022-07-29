@@ -1,7 +1,7 @@
 ARG BASE_IMAGE=nvidia/cuda:11.1-devel-ubuntu20.04
 FROM ${BASE_IMAGE}
 
-ARG PROJECT_NAME=melon
+ARG PROJECT_NAME=neddf
 ARG USER_NAME=challenger
 ARG PYTHON_VERSION=3.8
 ARG APPLICATION_DIRECTORY=/home/${USER_NAME}/${PROJECT_NAME}
@@ -33,8 +33,8 @@ RUN apt update && \
     curl \
     make \
     ssh \
-    colmap \
     openssh-client \
+    libgl1-mesa-dev \
     python${PYTHON_VERSION} python3-pip python-is-python3
     
 # Following is needed to swtich default python3 version

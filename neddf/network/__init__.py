@@ -1,1 +1,1 @@
-from melon.network.nerf import NeRF  # noqa
+from neddf.network.nerf import NeRF  # noqa

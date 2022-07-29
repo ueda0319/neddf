@@ -2,7 +2,7 @@ import torch
 from numpy import ndarray
 from torch import Tensor, nn
 
-from melon.camera.base_camera_calib import BaseCameraCalib
+from neddf.camera.base_camera_calib import BaseCameraCalib
 
 
 class PinholeCalib(BaseCameraCalib):

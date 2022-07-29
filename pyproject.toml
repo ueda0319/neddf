@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "melon"
+name = "neddf"
 version = "0.1.0"
 description = "Integrated multiview-stereo pipeline of neuralfields"
 authors = ["cvpaper.challenge Neuralfields group"]
@@ -8,7 +8,6 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
 torch = { version = "=1.10.2+cu111", source = "pytorch-cu111" }
-torchvision = { version = "=0.11.3+cu111", source = "pytorch-cu111" }
 opencv-python = "^4.5.5.64"
 tqdm = "^4.64.0"
 scipy = "^1.8.0"

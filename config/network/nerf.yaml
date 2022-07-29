@@ -1,4 +1,4 @@
-_target_: melon.network.NeRF
+_target_: neddf.network.NeRF
 embed_pos_rank: 10
 embed_dir_rank: 4
 layer_count: 8

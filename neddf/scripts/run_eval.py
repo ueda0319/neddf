@@ -5,7 +5,7 @@ import hydra
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig
 
-from melon.trainer import NeRFTrainer
+from neddf.trainer import NeRFTrainer
 
 
 def main() -> None:

@@ -1,1 +1,1 @@
-from melon.dataset.nerf_synthetic_dataset import NeRFSyntheticDataset  # noqa
+from neddf.dataset.nerf_synthetic_dataset import NeRFSyntheticDataset  # noqa

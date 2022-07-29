@@ -3,7 +3,7 @@ from typing import Dict
 import torch
 from torch import Tensor
 
-from melon.network import NeRF
+from neddf.network import NeRF
 
 
 class TestNetwork:

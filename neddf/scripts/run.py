@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from omegaconf import DictConfig
 
-from melon.trainer import NeRFTrainer
+from neddf.trainer import NeRFTrainer
 
 
 @hydra.main(config_path="../../config", config_name="default")
@@ -21,7 +21,7 @@ def main(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     # Set current directory for run from python (not poetry)
-    if "melon/melon" in os.getcwd():
+    if "neddf/neddf" in os.getcwd():
         os.chdir("..")
 
     # Fix seed

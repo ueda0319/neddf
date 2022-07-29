@@ -1,4 +1,4 @@
-_target_: melon.render.NeRFRender
+_target_: neddf.render.NeRFRender
 sample_coarse: 64
 sample_fine: 128
 dist_near: 2.0

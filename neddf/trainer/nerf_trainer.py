@@ -13,10 +13,10 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import tqdm
 
-from melon.camera import BaseCameraCalib, Camera, PinholeCalib
-from melon.dataset import NeRFSyntheticDataset
-from melon.network import NeRF
-from melon.render import NeRFRender, RenderTarget
+from neddf.camera import BaseCameraCalib, Camera, PinholeCalib
+from neddf.dataset import NeRFSyntheticDataset
+from neddf.network import NeRF
+from neddf.render import NeRFRender, RenderTarget
 
 
 class NeRFTrainer:

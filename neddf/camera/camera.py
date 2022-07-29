@@ -6,8 +6,8 @@ from numpy import ndarray
 from scipy.spatial.transform import Rotation
 from torch import Tensor, nn
 
-from melon.camera.base_camera_calib import BaseCameraCalib
-from melon.camera.ray import Ray
+from neddf.camera.base_camera_calib import BaseCameraCalib
+from neddf.camera.ray import Ray
 
 
 class Camera(nn.Module):

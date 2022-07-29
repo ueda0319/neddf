@@ -5,9 +5,9 @@ from torch import Tensor
 from torch.nn.functional import relu
 from tqdm import tqdm
 
-from melon.camera import Camera
-from melon.network import NeRF
-from melon.render.base_neural_render import BaseNeuralRender
+from neddf.camera import Camera
+from neddf.network import NeRF
+from neddf.render.base_neural_render import BaseNeuralRender
 
 RenderTarget = Literal["color", "depth", "transmittance"]
 

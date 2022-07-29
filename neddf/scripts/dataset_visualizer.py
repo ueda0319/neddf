@@ -12,7 +12,7 @@ from omegaconf import DictConfig
 from open3d.visualization.rendering import MaterialRecord
 from scipy.spatial.transform import Rotation
 
-from melon.dataset.base_dataset import BaseDataset
+from neddf.dataset.base_dataset import BaseDataset
 
 
 class Visualizer:
@@ -43,7 +43,7 @@ class Visualizer:
 
         # Window
         w: gui.Window = gui.Application.instance.create_window(
-            "melon Dataset Visualizer", 1024, 768
+            "neddf Dataset Visualizer", 1024, 768
         )
         # Scene 3D viewer panel
         scene = gui.SceneWidget()
@@ -394,6 +394,6 @@ def main(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     # Set current directory for run from python (not poetry)
-    if "melon/melon" in os.getcwd():
+    if "neddf/neddf" in os.getcwd():
         os.chdir("..")
     main()

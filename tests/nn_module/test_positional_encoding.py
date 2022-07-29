@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from melon.nn_module import PositionalEncoding
+from neddf.nn_module import PositionalEncoding
 
 
 class TestPositionalEncoding:

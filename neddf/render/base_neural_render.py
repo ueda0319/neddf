@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 import torch
 from torch import Tensor, nn
 
-from melon.camera import Camera
+from neddf.camera import Camera
 
 
 class BaseNeuralRender(ABC, nn.Module):

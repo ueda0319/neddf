@@ -2,9 +2,9 @@ import numpy as np
 import pytest
 from numpy import ndarray
 
-from melon.camera import Camera, PinholeCalib
-from melon.network import NeRF
-from melon.render import NeRFRender
+from neddf.camera import Camera, PinholeCalib
+from neddf.network import NeRF
+from neddf.render import NeRFRender
 
 
 @pytest.fixture
