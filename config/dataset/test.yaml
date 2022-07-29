@@ -1,0 +1,3 @@
+_target_: neddf.dataset.NeRFSyntheticDataset
+dataset_dir: "data/test_metalball/"
+data_split: "train"

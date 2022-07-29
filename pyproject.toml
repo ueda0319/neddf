@@ -1,0 +1,69 @@
+[tool.poetry]
+name = "neddf"
+version = "0.1.0"
+description = "Integrated multiview-stereo pipeline of neuralfields"
+authors = ["cvpaper.challenge Neuralfields group"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.11"
+torch = { version = "=1.10.2+cu111", source = "pytorch-cu111" }
+opencv-python = "^4.5.5.64"
+tqdm = "^4.64.0"
+scipy = "^1.8.0"
+tensorboard = "^2.8.0"
+PyYAML = "^6.0"
+torchtyping = "^0.1.4"
+hydra-core = "^1.1.1"
+scikit-image = "^0.19.2"
+wandb = "^0.12.16"
+open3d = "^0.15.2"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.3.0"
+flake8 = "^4.0.1"
+isort = "^5.10.1"
+mypy = "^0.942"
+pytest-cov = "^3.0.0"
+pytest-mock = "^3.7.0"
+
+[[tool.poetry.source]]
+name = "pytorch-cu111"
+url = "https://download.pytorch.org/whl/cu111/"
+secondary = true
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = 3.8
+# following setting is same as pysen
+# https://github.com/pfnet/pysen/blob/main/setup.cfg#L12
+check_untyped_defs = true
+disallow_any_decorated = false
+disallow_any_generics = false
+disallow_any_unimported = false
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = false
+disallow_untyped_defs = true
+ignore_errors = false
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+strict_equality = true
+strict_optional = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

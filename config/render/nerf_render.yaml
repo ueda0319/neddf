@@ -1,0 +1,6 @@
+_target_: neddf.render.NeRFRender
+sample_coarse: 64
+sample_fine: 128
+dist_near: 2.0
+dist_far: 6.0
+max_dist: 6.0
