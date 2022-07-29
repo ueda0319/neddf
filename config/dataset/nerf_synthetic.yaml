@@ -1,0 +1,3 @@
+_target_: melon.dataset.NeRFSyntheticDataset
+dataset_dir: "data/nerf_synthetic/chair/"
+data_split: "train"
