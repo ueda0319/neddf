@@ -1,3 +1,5 @@
+import math
+
 import torch
 from torch import Tensor, nn
 
@@ -37,7 +39,7 @@ class PositionalEncoding(nn.Module):
         # Note: Original NeRF paper use pi * (2.0**t) for frequency, but for adjust
         # scale of each datasets, this implementation use (2.0**t)
         freq: Tensor = (
-            torch.tensor([(2.0**t) for t in range(self.embed_dim)])
+            torch.tensor([math.pi * (2.0**t) for t in range(self.embed_dim)])
             .reshape(-1, 1)
             .to(x.device)
         )

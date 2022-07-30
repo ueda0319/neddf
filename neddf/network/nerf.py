@@ -3,10 +3,11 @@ from typing import Callable, Dict, Final, List, Optional
 import torch
 from torch import Tensor, nn
 
+from neddf.network.base_neuralfield import BaseNeuralField
 from neddf.nn_module import PositionalEncoding
 
 
-class NeRF(nn.Module):
+class NeRF(BaseNeuralField):
     def __init__(
         self,
         embed_pos_rank: int = 10,

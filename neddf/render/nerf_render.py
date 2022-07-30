@@ -6,7 +6,7 @@ from torch.nn.functional import relu
 from tqdm import tqdm
 
 from neddf.camera import Camera
-from neddf.network import NeRF
+from neddf.network import BaseNeuralField
 from neddf.render.base_neural_render import BaseNeuralRender
 
 RenderTarget = Literal["color", "depth", "transmittance"]
@@ -15,8 +15,8 @@ RenderTarget = Literal["color", "depth", "transmittance"]
 class NeRFRender(BaseNeuralRender):
     def __init__(
         self,
-        network_coarse: NeRF,
-        network_fine: NeRF,
+        network_coarse: BaseNeuralField,
+        network_fine: BaseNeuralField,
         sample_coarse: int = 128,
         sample_fine: int = 128,
         dist_near: float = 2.0,
@@ -24,8 +24,8 @@ class NeRFRender(BaseNeuralRender):
         max_dist: float = 6.0,
     ) -> None:
         super().__init__()
-        self.network_coarse: NeRF = network_coarse
-        self.network_fine: NeRF = network_fine
+        self.network_coarse: BaseNeuralField = network_coarse
+        self.network_fine: BaseNeuralField = network_fine
         self.sample_coarse: Final[int] = sample_coarse
         self.sample_fine: Final[int] = sample_fine
         self.dist_near: Final[float] = dist_near
@@ -180,7 +180,7 @@ class NeRFRender(BaseNeuralRender):
             above = min(pixel_length, below + chunk)
             integrate = self.render_rays(uv[below:above, :], camera)
             for key in target_types:
-                integrates[key].append(integrate[key])
+                integrates[key].append(integrate[key].detach())
         images: Dict[str, Tensor] = {
             key: torch.cat(integrates[key], 0).reshape(h, w, -1) for key in target_types
         }
