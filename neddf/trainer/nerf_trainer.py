@@ -78,7 +78,7 @@ class NeRFTrainer:
         Path("models").mkdir(parents=True)
 
         frame_length: Final[int] = len(self.dataset)
-        for epoch in range(1, self.config.trainer.epoch_max + 1):
+        for epoch in range(0, self.config.trainer.epoch_max + 1):
             print("epoch: ", epoch)
             camera_ids = np.random.permutation(frame_length)
             for camera_id in tqdm(camera_ids):
@@ -89,7 +89,7 @@ class NeRFTrainer:
                 print("test rendering...")
                 output_dir: Path = Path("render/{:04}".format(epoch))
                 output_dir.mkdir(parents=True)
-                self.render_test(output_dir, camera_ids[0], downsampling=2)
+                self.render_test(output_dir, camera_ids[0], downsampling=3)
             if epoch % 100 == 0:
                 torch.save(
                     self.neural_render.state_dict(),
@@ -162,55 +162,53 @@ class NeRFTrainer:
         return float(loss.item())
 
     def render_test(
-        self, output_dir: Path, camera_id: int, downsampling: int = 1
+        self, output_dir: Path, camera_id: int, downsampling: int = 1, chunk: int = 128
     ) -> None:
-        with torch.no_grad():  # type: ignore
-            rgb = self.dataset[camera_id]["rgb_images"]
-            camera = self.cameras[camera_id]
-            camera.update_transform()
-            h: Final[int] = rgb.shape[0]
-            w: Final[int] = rgb.shape[1]
-            target_types: List[RenderTarget] = ["color", "depth"]
+        rgb = self.dataset[camera_id]["rgb_images"]
+        camera = self.cameras[camera_id]
+        camera.update_transform()
+        h: Final[int] = rgb.shape[0]
+        w: Final[int] = rgb.shape[1]
+        target_types: List[RenderTarget] = ["color", "depth"]
 
-            # render images with target_types "color" and "depth"
-            images = self.neural_render.render_image(
-                w, h, camera, target_types, downsampling
-            )
-            rgb_np = (
-                torch.clamp(images["color"] * 255, 0, 255)
-                .detach()
-                .cpu()
-                .numpy()
-                .astype(np.uint8)
-            )
-            depth_np = (
-                torch.clamp((images["depth"] - 2.0) / 4.0 * 50000 / 256, 0, 255)
-                .detach()
-                .cpu()
-                .numpy()
-                .astype(np.uint8)
-            )
+        # render images with target_types "color" and "depth"
+        images = self.neural_render.render_image(
+            w, h, camera, target_types, downsampling, chunk
+        )
+        rgb_np = (
+            torch.clamp(images["color"] * 255, 0, 255)
+            .detach()
+            .cpu()
+            .numpy()
+            .astype(np.uint8)
+        )
+        depth_np = (
+            torch.clamp((images["depth"] - 2.0) / 4.0 * 50000 / 256, 0, 255)
+            .detach()
+            .cpu()
+            .numpy()
+            .astype(np.uint8)
+        )
 
-            rgb_gt = self.dataset[camera_id]["rgb_images"]
+        rgb_gt = self.dataset[camera_id]["rgb_images"]
 
-            # output_pathes
-            rgb_path: Path = output_dir / "{:03}_rgb.png".format(camera_id)
-            depth_path: Path = output_dir / "{:03}_depth.png".format(camera_id)
-            rgb_gt_path: Path = output_dir / "{:03}_rgb_gt.png".format(camera_id)
-            # write images
-            cv2.imwrite(str(rgb_path), rgb_np)
-            cv2.imwrite(str(rgb_gt_path), rgb_gt)
-            cv2.imwrite(str(depth_path), depth_np)
+        # output_pathes
+        rgb_path: Path = output_dir / "{:03}_rgb.png".format(camera_id)
+        depth_path: Path = output_dir / "{:03}_depth.png".format(camera_id)
+        rgb_gt_path: Path = output_dir / "{:03}_rgb_gt.png".format(camera_id)
+        # write images
+        cv2.imwrite(str(rgb_path), rgb_np)
+        cv2.imwrite(str(rgb_gt_path), rgb_gt)
+        cv2.imwrite(str(depth_path), depth_np)
 
-            # write psnr and ssim on fullsize-rendering
-            if downsampling == 1:
-                psnr = peak_signal_noise_ratio(rgb_np, rgb_gt)
-                ssim = structural_similarity(rgb_np, rgb_gt, channel_axis=2)
-                print("psnr: {}, ssim: {}".format(psnr, ssim))
+        # write psnr and ssim on fullsize-rendering
+        if downsampling == 1:
+            psnr = peak_signal_noise_ratio(rgb_np, rgb_gt)
+            ssim = structural_similarity(rgb_np, rgb_gt, channel_axis=2)
+            print("psnr: {}, ssim: {}".format(psnr, ssim))
 
     def render_all(self, output_dir: Path) -> None:
-        with torch.no_grad():  # type: ignore
-            frame_length: Final[int] = len(self.dataset)
-            for camera_id in range(frame_length):
-                print("rendering from camera {}".format(camera_id))
-                self.render_test(output_dir, camera_id, 1)
+        frame_length: Final[int] = len(self.dataset)
+        for camera_id in range(frame_length):
+            print("rendering from camera {}".format(camera_id))
+            self.render_test(output_dir, camera_id, 1)

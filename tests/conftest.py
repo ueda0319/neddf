@@ -3,7 +3,7 @@ import pytest
 from numpy import ndarray
 
 from neddf.camera import Camera, PinholeCalib
-from neddf.network import NeRF
+from neddf.network import NeRF, NeuS
 from neddf.render import NeRFRender
 
 
@@ -42,6 +42,22 @@ def nerf_fixture():
         skips=[4],
     )
     return nerf
+
+
+@pytest.fixture
+def neus_fixture():
+    neus: NeuS = NeuS(
+        embed_pos_rank=6,
+        embed_dir_rank=4,
+        sdf_layer_count=8,
+        sdf_layer_width=256,
+        col_layer_count=8,
+        col_layer_width=256,
+        init_variance=0.3,
+        activation_type="ReLU",
+        skips=[4],
+    )
+    return neus
 
 
 @pytest.fixture
