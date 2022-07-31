@@ -36,7 +36,7 @@ class NeDDF(BaseNeuralField):
         """
         super().__init__()
         # calculate mlp input dimensions after positional encoding
-        input_sdf_dim: Final[int] = embed_pos_rank * 6
+        input_ddf_dim: Final[int] = embed_pos_rank * 6
         input_col_dim: Final[int] = 6 + embed_dir_rank * 6 + ddf_layer_width
 
         # catch default params with referencial types
@@ -57,11 +57,11 @@ class NeDDF(BaseNeuralField):
         # create layers
         layers_ddf: List[nn.Module] = []
         layers_col: List[nn.Module] = []
-        layers_ddf.append(nn.Linear(input_sdf_dim, ddf_layer_width))
+        layers_ddf.append(nn.Linear(input_ddf_dim, ddf_layer_width))
         for layer_id in range(ddf_layer_count - 1):
             if layer_id in skips:
                 layers_ddf.append(
-                    nn.Linear(ddf_layer_width + input_sdf_dim, ddf_layer_width)
+                    nn.Linear(ddf_layer_width + input_ddf_dim, ddf_layer_width)
                 )
             else:
                 layers_ddf.append(nn.Linear(ddf_layer_width, ddf_layer_width))
