@@ -23,12 +23,6 @@ jobs:
       - name: Start docker container
         run: docker-compose up -d core
         working-directory: ${{ env.DOCKER_COMPOSE_DIRECTORY }}
-
-      # pytest-cov export coverage data to a file
-      # However, the directory made by actions/checkout does not allow write
-      # chmod is needed to resolve above problem
-      - name: Change permission
-        run: chmod 777 .
       
       - name: Github config
         run: |
@@ -43,6 +37,12 @@ jobs:
       - name: Run lint
         run: docker-compose exec -T core poetry run pysen run lint
         working-directory: ${{ env.DOCKER_COMPOSE_DIRECTORY }}
+
+      # pytest-cov export coverage data to a file
+      # However, the directory made by actions/checkout does not allow write
+      # chmod is needed to resolve above problem
+      - name: Change permission
+        run: chmod 777 .
 
       - name: Run test code
         run: docker-compose exec -T core make test
