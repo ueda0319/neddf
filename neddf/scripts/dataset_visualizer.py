@@ -7,12 +7,11 @@ import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
 import open3d.visualization.rendering as rendering
+from neddf.dataset.base_dataset import BaseDataset
 from numpy import ndarray
 from omegaconf import DictConfig
 from open3d.visualization.rendering import MaterialRecord
 from scipy.spatial.transform import Rotation
-
-from neddf.dataset.base_dataset import BaseDataset
 
 
 class Visualizer:

@@ -41,7 +41,7 @@ RUN apt update && \
 # For detail, please check following link https://unix.stackexchange.com/questions/410579/change-the-python3-default-version-in-ubuntu
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 && \
     update-alternatives --set python3 /usr/bin/python${PYTHON_VERSION} && \
-    python3 -m pip install --upgrade pip && \
+    python3 -m pip install --upgrade pip 'setuptools==59.5.0' && \
     python3 -m pip install --pre poetry
 
 # Add user. Without this, following process is executed as admin. 

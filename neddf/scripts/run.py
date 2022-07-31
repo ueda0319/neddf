@@ -6,9 +6,8 @@ from typing import Final
 import hydra
 import numpy as np
 import torch
-from omegaconf import DictConfig
-
 from neddf.trainer import NeRFTrainer
+from omegaconf import DictConfig
 
 
 @hydra.main(config_path="../../config", config_name="default")

@@ -16,6 +16,6 @@ class tanhExp(torch.autograd.Function):
     @staticmethod
     def backward(ctx: FunctionCtx, y: Tensor) -> Tensor:  # type: ignore
         x, ex, tx = ctx.saved_tensors  # type: ignore
-        d: Tensor = tx - x * ex * (tx**2 - 1)
+        d: Tensor = tx - x * ex * (tx ** 2 - 1)
         d[x > 20.0] = 1.0
         return d * y

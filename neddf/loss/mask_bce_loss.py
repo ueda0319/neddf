@@ -1,7 +1,6 @@
 import torch
-from torch import Tensor
-
 from neddf.loss.base_loss import BaseLoss
+from torch import Tensor
 
 
 class MaskBCELoss(BaseLoss):

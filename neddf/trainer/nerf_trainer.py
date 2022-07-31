@@ -5,6 +5,12 @@ import cv2
 import hydra
 import numpy as np
 import torch
+from neddf.camera import BaseCameraCalib, Camera, PinholeCalib
+from neddf.dataset import NeRFSyntheticDataset
+from neddf.logger import NeRFTBLogger
+from neddf.loss import BaseLoss
+from neddf.network import NeRF
+from neddf.render import NeRFRender, RenderTarget
 from numpy import ndarray
 from omegaconf import DictConfig
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
@@ -12,12 +18,6 @@ from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import tqdm
-
-from neddf.camera import BaseCameraCalib, Camera, PinholeCalib
-from neddf.dataset import NeRFSyntheticDataset
-from neddf.loss import BaseLoss
-from neddf.network import NeRF
-from neddf.render import NeRFRender, RenderTarget
 
 
 class NeRFTrainer:
@@ -75,6 +75,7 @@ class NeRFTrainer:
         self.scheduler: ExponentialLR = ExponentialLR(
             self.optimizer, gamma=self.config.trainer.scheduler_lr
         )
+        self.logger = NeRFTBLogger()
 
     def load_pretrained_model(self, model_path: Path) -> None:
         self.neural_render.load_state_dict(torch.load(str(model_path)))  # type: ignore
@@ -103,6 +104,8 @@ class NeRFTrainer:
                 )
 
     def run_train_step(self, camera_id: int) -> float:
+        self.logger.write_batchstart()
+
         self.optimizer.zero_grad()
         batch_size: Final[int] = self.config.trainer.batch_size
         rgb = self.dataset[camera_id]["rgb_images"]
@@ -156,12 +159,16 @@ class NeRFTrainer:
 
         loss.backward()  # type: ignore
         loss_float = float(loss.item())
+        self.logger.write(loss_float, 1.0, loss_dict)
 
         del loss
         del loss_dict
 
         self.optimizer.step()
         self.optimizer.zero_grad()
+
+        self.logger.write_batchend()
+        self.logger.next()
 
         return loss_float
 

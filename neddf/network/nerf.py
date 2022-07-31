@@ -1,10 +1,9 @@
 from typing import Callable, Dict, Final, List, Optional
 
 import torch
-from torch import Tensor, nn
-
 from neddf.network.base_neuralfield import BaseNeuralField
 from neddf.nn_module import PositionalEncoding
+from torch import Tensor, nn
 
 
 class NeRF(BaseNeuralField):

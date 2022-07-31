@@ -1,13 +1,12 @@
 from typing import Any, Dict, Final, Iterable, List, Literal
 
 import torch
-from torch import Tensor
-from torch.nn.functional import relu
-from tqdm import tqdm
-
 from neddf.camera import Camera
 from neddf.network import BaseNeuralField
 from neddf.render.base_neural_render import BaseNeuralRender
+from torch import Tensor
+from torch.nn.functional import relu
+from tqdm import tqdm
 
 RenderTarget = Literal["color", "depth", "transmittance"]
 

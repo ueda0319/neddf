@@ -1,11 +1,10 @@
 from typing import Callable, Dict, Final, List, Optional
 
 import torch
-from torch import Tensor, nn, sigmoid
-from torch.nn.functional import relu, softplus
-
 from neddf.network.base_neuralfield import BaseNeuralField
 from neddf.nn_module import ScaledPositionalEncoding, tanhExp
+from torch import Tensor, nn, sigmoid
+from torch.nn.functional import relu, softplus
 
 
 class NeDDF(BaseNeuralField):
@@ -67,8 +66,8 @@ class NeDDF(BaseNeuralField):
             else:
                 layers_ddf.append(nn.Linear(ddf_layer_width, ddf_layer_width))
         layers_col.append(nn.Linear(input_col_dim, col_layer_width))
-        for layer_id in range(col_layer_count - 1):
-            layers_ddf.append(nn.Linear(col_layer_width, col_layer_width))
+        for _ in range(col_layer_count - 1):
+            layers_col.append(nn.Linear(col_layer_width, col_layer_width))
         layers_col.append(nn.Linear(col_layer_width, 3))
         # Set layers as optimization targets
         self.layers_ddf = nn.ModuleList(layers_ddf)

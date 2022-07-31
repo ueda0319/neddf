@@ -1,6 +1,7 @@
 data/*
 models/*
 outputs/*
+log/*
 __pycache__
 .coverage
 .mypy_cache
