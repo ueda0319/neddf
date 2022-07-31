@@ -15,7 +15,7 @@ jobs:
       - name: Install Poetry
         run: |
           python -m pip install --upgrade pip
-          pip install poetry
+          pip install poetry==1.2.0b3 poetry-core==1.1.0b3
       - name: Install Packages
         run: |
           poetry install
