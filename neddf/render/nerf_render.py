@@ -175,27 +175,35 @@ class NeRFRender(BaseNeuralRender):
         Returns:
             Dict[str, Tensor]: each type of images which selected in target_types.
         """
-        w = width // downsampling
-        h = height // downsampling
-        us = (
-            torch.arange(w).reshape(1, w).expand(h, w).reshape(-1).to(camera.device)
-            * downsampling
-        )
-        vs = (
-            torch.arange(h).reshape(h, 1).expand(h, w).reshape(-1).to(camera.device)
-            * downsampling
-        )
-        uv: Tensor = torch.stack([us, vs], 1)
 
-        pixel_length = us.shape[0]
-        integrates: Dict[str, List[Tensor]] = {key: [] for key in target_types}
+        with torch.set_grad_enabled(False):
+            torch.cuda.empty_cache()
+            w = width // downsampling
+            h = height // downsampling
+            us = (
+                torch.arange(w).reshape(1, w).expand(h, w).reshape(-1).to(camera.device)
+                * downsampling
+            )
+            vs = (
+                torch.arange(h).reshape(h, 1).expand(h, w).reshape(-1).to(camera.device)
+                * downsampling
+            )
+            uv: Tensor = torch.stack([us, vs], 1)
 
-        for below in tqdm(range(0, pixel_length, chunk)):
-            above = min(pixel_length, below + chunk)
-            integrate = self.render_rays(uv[below:above, :], camera)
-            for key in target_types:
-                integrates[key].append(integrate[key].detach())
-        images: Dict[str, Tensor] = {
-            key: torch.cat(integrates[key], 0).reshape(h, w, -1) for key in target_types
-        }
+            pixel_length = us.shape[0]
+            integrates: Dict[str, List[Tensor]] = {key: [] for key in target_types}
+
+            self.network_coarse.eval()
+            self.network_fine.eval()
+            for below in tqdm(range(0, pixel_length, chunk)):
+                above = min(pixel_length, below + chunk)
+                integrate = self.render_rays(uv[below:above, :], camera)
+                for key in target_types:
+                    integrates[key].append(integrate[key].detach())
+                
+            images: Dict[str, Tensor] = {
+                key: torch.cat(integrates[key], 0).reshape(h, w, -1) for key in target_types
+            }
+            self.network_coarse.train(True)
+            self.network_fine.train(True)
         return images

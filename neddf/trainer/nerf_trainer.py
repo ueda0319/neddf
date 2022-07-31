@@ -150,12 +150,18 @@ class NeRFTrainer:
         loss = torch.sum(torch.stack(list(loss_dict.values())))
 
         loss.backward()  # type: ignore
-        self.optimizer.step()
+        loss_float = float(loss.item())
 
-        return float(loss.item())
+        del loss
+        del loss_dict
+
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+
+        return loss_float
 
     def render_test(
-        self, output_dir: Path, camera_id: int, downsampling: int = 1, chunk: int = 32
+        self, output_dir: Path, camera_id: int, downsampling: int = 1
     ) -> None:
         rgb = self.dataset[camera_id]["rgb_images"]
         camera = self.cameras[camera_id]
@@ -166,7 +172,7 @@ class NeRFTrainer:
 
         # render images with target_types "color" and "depth"
         images = self.neural_render.render_image(
-            w, h, camera, target_types, downsampling, chunk
+            w, h, camera, target_types, downsampling, self.config.trainer.chunk
         )
         rgb_np = (
             torch.clamp(images["color"] * 255, 0, 255)

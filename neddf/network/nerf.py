@@ -104,24 +104,25 @@ class NeRF(BaseNeuralField):
                 (since it is possible to create M3 that reproduces M2 [M1 x, d] with M3[x, d])
 
         """
-        batch_size: Final[int] = input_pos.shape[0]
-        sampling: Final[int] = input_pos.shape[1]
+        with torch.set_grad_enabled(self.training):
+            batch_size: Final[int] = input_pos.shape[0]
+            sampling: Final[int] = input_pos.shape[1]
 
-        embed_pos: Tensor = self.pe_pos(input_pos.reshape(-1, 3))
-        embed_dir: Tensor = self.pe_dir(input_dir.reshape(-1, 3))
+            embed_pos: Tensor = self.pe_pos(input_pos.reshape(-1, 3))
+            embed_dir: Tensor = self.pe_dir(input_dir.reshape(-1, 3))
 
-        hx: Tensor = embed_pos
-        for layer_id, layer in enumerate(self.layers):
-            hx = self.activation(layer(hx))
-            if layer_id in self.skips:
-                hx = torch.cat([hx, embed_pos], dim=1)
-        density = self.outL_density(hx)
+            hx: Tensor = embed_pos
+            for layer_id, layer in enumerate(self.layers):
+                hx = self.activation(layer(hx))
+                if layer_id in self.skips:
+                    hx = torch.cat([hx, embed_pos], dim=1)
+            density = self.outL_density(hx)
 
-        dir_feature = torch.cat([hx, embed_dir], dim=1)
-        color = self.outL_color(dir_feature)
+            dir_feature = torch.cat([hx, embed_dir], dim=1)
+            color = self.outL_color(dir_feature)
 
-        output_dict: Dict[str, Tensor] = {
-            "density": density.reshape(batch_size, sampling),
-            "color": color.reshape(batch_size, sampling, 3),
-        }
+            output_dict: Dict[str, Tensor] = {
+                "density": density.reshape(batch_size, sampling),
+                "color": color.reshape(batch_size, sampling, 3),
+            }
         return output_dict

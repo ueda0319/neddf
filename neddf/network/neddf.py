@@ -1,8 +1,8 @@
 from typing import Callable, Dict, Final, List, Optional
 
 import torch
-from torch import Tensor, nn
-from torch.nn.functional import relu, sigmoid, softplus
+from torch import Tensor, nn, sigmoid
+from torch.nn.functional import relu, softplus
 
 from neddf.network.base_neuralfield import BaseNeuralField
 from neddf.nn_module import ScaledPositionalEncoding, tanhExp
@@ -111,6 +111,8 @@ class NeDDF(BaseNeuralField):
                 (since it is possible to create M3 that reproduces M2 [M1 x, d] with M3[x, d])
 
         """
+        if not self.training:
+            return self.forward_eval(input_pos, input_dir)
         batch_size: Final[int] = input_pos.shape[0]
         sampling: Final[int] = input_pos.shape[1]
 
@@ -193,4 +195,62 @@ class NeDDF(BaseNeuralField):
             "aux_grad_penalty": ag_penalty.reshape(batch_size, sampling),
             "range_penalty": s_penalty.reshape(batch_size, sampling),
         }
+        return output_dict
+
+    def forward_eval(
+        self,
+        input_pos: Tensor,
+        input_dir: Tensor,
+    ) -> Dict[str, Tensor]:
+        batch_size: Final[int] = input_pos.shape[0]
+        sampling: Final[int] = input_pos.shape[1]
+
+        with torch.set_grad_enabled(True):
+
+            input_pos.requires_grad_(True)
+            embed_pos: Tensor = self.pe_pos(input_pos.reshape(-1, 3))
+            embed_dir: Tensor = self.pe_dir(input_dir.reshape(-1, 3))
+
+            hx: Tensor = embed_pos
+            for layer_id, layer in enumerate(self.layers_ddf):
+                hx = self.activation(layer(hx))
+                if layer_id in self.skips:
+                    hx = torch.cat([hx, embed_pos], dim=1)
+            distance: Tensor = softplus(hx[:, :1]) + self.d_near
+            aux_grad: Tensor = sigmoid(hx[:, 1:2])
+            features: Tensor = hx
+
+            d_output = torch.ones_like(
+                distance, requires_grad=False, device=distance.device
+            )
+            # gradients of distance field take normal vector
+            distance_grad = torch.autograd.grad(
+                outputs=distance,
+                inputs=input_pos,
+                grad_outputs=d_output,
+                create_graph=True,
+                retain_graph=True,
+                only_inputs=True,
+            )[0].reshape(-1, 3)
+
+        with torch.set_grad_enabled(False):
+            nabla_distance: Tensor = torch.cat([distance_grad, aux_grad], dim=1)
+
+            # calculate density from nabla_distance and inverse distance
+            dDdt: Tensor = torch.norm(nabla_distance, dim=1)[:, None]  # type: ignore
+            distance_inv: Tensor = torch.reciprocal(distance)
+            density: Tensor = distance_inv * (1 - dDdt)
+
+            hx = torch.cat(
+                [input_pos.reshape(-1, 3), embed_dir, distance_grad, features], dim=1
+            )
+            for layer in self.layers_col:
+                hx = self.activation(layer(hx))
+            color: Tensor = hx
+
+            output_dict: Dict[str, Tensor] = {
+                "distance": distance.reshape(batch_size, sampling),
+                "density": density.reshape(batch_size, sampling),
+                "color": color.reshape(batch_size, sampling, 3),
+            }
         return output_dict
