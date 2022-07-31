@@ -46,7 +46,7 @@ class NeDDF(BaseNeuralField):
 
         activation_types: Final[Dict[str, Callable[[Tensor], Tensor]]] = {
             "ReLU": nn.ReLU(),
-            "tanhExp": tanhExp,
+            "tanhExp": tanhExp.apply,
         }
 
         self.activation: Callable[[Tensor], Tensor] = activation_types[activation_type]
@@ -161,10 +161,10 @@ class NeDDF(BaseNeuralField):
         d2D_dwdt_rest = 3 * aux_grad * distance_inv.detach()
 
         # penalty for aux. gradient
-        w_penalty_scale = (
+        ag_penalty_scale = (
             aux_grad.detach() * distance_grad_norm.detach() * distance.detach()
         )
-        w_penalty = w_penalty_scale * torch.square(d2D_dwdt - d2D_dwdt_rest)
+        ag_penalty = ag_penalty_scale * torch.square(d2D_dwdt - d2D_dwdt_rest)
 
         # penalty for values which over ranges
         # dDdt < 1.0
@@ -190,7 +190,7 @@ class NeDDF(BaseNeuralField):
             "distance": distance.reshape(batch_size, sampling),
             "density": density.reshape(batch_size, sampling),
             "color": color.reshape(batch_size, sampling, 3),
-            "w_penalty": w_penalty.reshape(batch_size, sampling),
-            "s_penalty": s_penalty.reshape(batch_size, sampling),
+            "aux_grad_penalty": ag_penalty.reshape(batch_size, sampling),
+            "range_penalty": s_penalty.reshape(batch_size, sampling),
         }
         return output_dict

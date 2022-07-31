@@ -123,18 +123,26 @@ class NeRFTrainer:
 
         render_result: Dict[str, Tensor] = self.neural_render.render_rays(uv, camera)
 
-        rgb_gt_np: ndarray = (1.0 / 256) * np.stack(
-            [rgb[v, u, :] for u, v in zip(us_int, vs_int)]
-        ).astype(np.float32)
-        mask_gt_np: ndarray = (1.0 / 256) * np.stack(
-            [mask[v, u] for u, v in zip(us_int, vs_int)]
-        ).astype(np.float32)
-        rgb_gt: Tensor = torch.from_numpy(rgb_gt_np).to(torch.float32).to(self.device)
-        mask_gt: Tensor = torch.from_numpy(mask_gt_np).to(torch.float32).to(self.device)
-        targets: Dict[str, Tensor] = {
-            "color": rgb_gt,
-            "mask": mask_gt,
-        }
+        loss_types: List[str] = [type(func).__name__ for func in self.loss_functions]
+        targets: Dict[str, Tensor] = {}
+        if "ColorLoss" in loss_types:
+            rgb_gt_np: ndarray = (1.0 / 256) * np.stack(
+                [rgb[v, u, :] for u, v in zip(us_int, vs_int)]
+            ).astype(np.float32)
+            targets["color"] = torch.from_numpy(rgb_gt_np).to(torch.float32).to(self.device)
+
+        if "MaskBCELoss" in loss_types:
+            mask_gt_np: ndarray = (1.0 / 256) * np.stack(
+                [mask[v, u] for u, v in zip(us_int, vs_int)]
+            ).astype(np.float32)
+            targets["mask"] = torch.from_numpy(mask_gt_np).to(torch.float32).to(self.device)
+
+        if "AuxGradLoss" in loss_types:
+            targets["aux_grad_penalty"] = torch.zeros_like(render_result["aux_grad_penalty"])
+
+        if "RangeLoss" in loss_types:
+            targets["range_penalty"] = torch.zeros_like(render_result["range_penalty"])
+
 
         loss_dict: Dict[str, Tensor] = {}
         for loss_function in self.loss_functions:
@@ -147,7 +155,7 @@ class NeRFTrainer:
         return float(loss.item())
 
     def render_test(
-        self, output_dir: Path, camera_id: int, downsampling: int = 1, chunk: int = 128
+        self, output_dir: Path, camera_id: int, downsampling: int = 1, chunk: int = 32
     ) -> None:
         rgb = self.dataset[camera_id]["rgb_images"]
         camera = self.cameras[camera_id]

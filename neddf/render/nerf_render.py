@@ -102,6 +102,7 @@ class NeRFRender(BaseNeuralRender):
             torch.rand(batch_size, self.sample_coarse + 1).to(device)
             * ((self.dist_far - self.dist_near) / (self.sample_coarse))
         )
+        delta_coarse: Tensor = dists_coarse[:, 1:] - dists_coarse[:, :-1]
         samples_coarse: Dict[str, Tensor] = rays.get_sampling_points(dists_coarse)
         values_coarse: Dict[str, Tensor] = self.network_coarse(
             samples_coarse["sample_pos"],
@@ -112,6 +113,12 @@ class NeRFRender(BaseNeuralRender):
             densities=values_coarse["density"],
             colors=values_coarse["color"],
         )
+        for key in values_coarse:
+            if "penalty" in key:
+                integrate_coarse[key] = torch.sum(
+                    delta_coarse.detach() * values_coarse[key].reshape(batch_size, -1)[:, :-1],
+                    dim=1
+                )
 
         with torch.no_grad():  # type: ignore
             dists_fine: Tensor = self.sample_pdf(
@@ -119,6 +126,7 @@ class NeRFRender(BaseNeuralRender):
                 integrate_coarse["weight"],
                 self.sample_fine + 1,
             )
+        delta_fine: Tensor = dists_fine[:, 1:] - dists_fine[:, :-1]
         samples_fine: Dict[str, Tensor] = rays.get_sampling_points(dists_fine)
         values_fine: Dict[str, Tensor] = self.network_fine(
             samples_fine["sample_pos"],
@@ -129,6 +137,12 @@ class NeRFRender(BaseNeuralRender):
             densities=values_fine["density"],
             colors=values_fine["color"],
         )
+        for key in values_fine:
+            if "penalty" in key:
+                integrate[key] = torch.sum(
+                    delta_fine.detach() * values_fine[key].reshape(batch_size, -1)[:, :-1],
+                    dim=1
+                )
         for key in integrate_coarse:
             key_coarse = "{}_coarse".format(key)
             integrate[key_coarse] = integrate_coarse[key]
