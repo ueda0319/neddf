@@ -1,0 +1,11 @@
+_target_: neddf.network.NeDDF
+embed_pos_rank: 6
+embed_dir_rank: 4
+ddf_layer_count: 8
+ddf_layer_width: 256
+col_layer_count: 8
+col_layer_width: 256
+d_near: 0.01
+activation_type: "ReLU"
+skips:
+  - 4
