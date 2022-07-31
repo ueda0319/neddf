@@ -3,9 +3,8 @@ from pathlib import Path
 
 import hydra
 from hydra.core.global_hydra import GlobalHydra
-from omegaconf import DictConfig
-
 from neddf.trainer import NeRFTrainer
+from omegaconf import DictConfig
 
 
 def main() -> None:

@@ -2,9 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List
 
 import torch
-from torch import Tensor, nn
-
 from neddf.camera import Camera
+from torch import Tensor, nn
 
 
 class BaseNeuralRender(ABC, nn.Module):
@@ -26,7 +25,8 @@ class BaseNeuralRender(ABC, nn.Module):
             weights (Tensor[batch_size, samples_coarse, float32]):
                 weight of each coarse sampling points
             samples_fine (int): count of sampling points this method generate
-            cat_coarse (bool): flag to concatenate coarse sampling point in output fine samplings
+            cat_coarse (bool):
+                flag to concatenate coarse sampling point in output fine samplings
 
         Returns:
             Tensor: dists of fine sampling points

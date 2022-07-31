@@ -2,12 +2,11 @@ from typing import Final, Optional
 
 import numpy as np
 import torch
+from neddf.camera.base_camera_calib import BaseCameraCalib
+from neddf.camera.ray import Ray
 from numpy import ndarray
 from scipy.spatial.transform import Rotation
 from torch import Tensor, nn
-
-from neddf.camera.base_camera_calib import BaseCameraCalib
-from neddf.camera.ray import Ray
 
 
 class Camera(nn.Module):
@@ -179,7 +178,8 @@ class Camera(nn.Module):
 
         Returns:
             Tuple:
-                Tensor[batch_size, 2, float32]: center position of target pixels in image coordinate (h, w)
+                Tensor[batch_size, 2, float32]: center position of target pixels
+                                                in image coordinate (h, w)
         """
         uv = 0.5 + scale * pixel_id.to(torch.float32)
         return uv

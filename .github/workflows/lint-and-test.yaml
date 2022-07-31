@@ -33,7 +33,7 @@ jobs:
         working-directory: ${{ env.DOCKER_COMPOSE_DIRECTORY }}
 
       - name: Run lint
-        run: docker-compose exec -T core make lint
+        run: docker-compose exec -T core poetry run pysen run lint
         working-directory: ${{ env.DOCKER_COMPOSE_DIRECTORY }}
 
       - name: Run test code

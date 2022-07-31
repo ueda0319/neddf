@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from time import time
 from typing import Dict
+
 from torch import Tensor
 
 
@@ -13,7 +14,7 @@ class NeRFLoggerAbstract:
     def __init__(self) -> None:
         self.loss: float = 0.0
         self.psnr: float = 0.0
-        self.loss_dict: Dict[str, Tensor] = {}
+        self.loss_dict: Dict[str, float] = {}
         self.loggerstart: float = time()
         self.batchstart: float = self.loggerstart
         self.prev_batchend: float = self.loggerstart
@@ -24,7 +25,7 @@ class NeRFLoggerAbstract:
         """Reset registered data."""
         self.loss = 0.0
         self.psnr = 0.0
-        self.loss_dict: Dict[str, Tensor] = {}
+        self.loss_dict = {}
         self.niter = 0
         self.loggerstart = time()
         self.batchstart = self.loggerstart
@@ -40,7 +41,7 @@ class NeRFLoggerAbstract:
         """
         self.loss = loss
         self.psnr = psnr
-        self.loss_dict = {key: loss_dict[key].detach() for key in loss_dict}
+        self.loss_dict = {key: float(loss_dict[key].item()) for key in loss_dict}
 
     def write_batchstart(self) -> None:
         """Register start time of an iteration. Please execute before an iteration."""
@@ -62,7 +63,7 @@ class NeRFLoggerAbstract:
         }
         for key in self.loss_dict:
             log_dict["objective/{}".format(key)] = self.loss_dict[key]
-        
+
         self._next_impl(log_dict)
         self.niter += 1
 
@@ -73,4 +74,4 @@ class NeRFLoggerAbstract:
         Args:
             data (Dict): Parameters for implemented logger
         """
-        None
+        raise NotImplementedError()

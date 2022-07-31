@@ -4,10 +4,9 @@ from typing import Dict, Final, List
 
 import cv2
 import numpy as np
+from neddf.dataset.base_dataset import BaseDataset
 from numpy import ndarray
 from scipy.spatial.transform import Rotation
-
-from neddf.dataset.base_dataset import BaseDataset
 
 
 class NeRFSyntheticDataset(BaseDataset):

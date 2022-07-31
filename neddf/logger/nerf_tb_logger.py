@@ -1,7 +1,7 @@
 from typing import Dict
 
+import torch
 from torch.utils.tensorboard import SummaryWriter
-import datetime
 
 from .nerf_logger_abstract import NeRFLoggerAbstract
 
@@ -38,6 +38,7 @@ if __name__ == "__main__":
         logger.write_batchstart()
         sleep(1.0 + random.random())
         logger.write_batchend()
-        logger.write(1.0 + random.random(), random.random())
+        loss_dict = {"loss1": torch.tensor([1.0])}
+        logger.write(1.0 + random.random(), random.random(), loss_dict)
         logger.next()
         sleep(random.random())

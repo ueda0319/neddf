@@ -5,6 +5,12 @@ import cv2
 import hydra
 import numpy as np
 import torch
+from neddf.camera import BaseCameraCalib, Camera, PinholeCalib
+from neddf.dataset import NeRFSyntheticDataset
+from neddf.logger import NeRFTBLogger
+from neddf.loss import BaseLoss
+from neddf.network import NeRF
+from neddf.render import NeRFRender, RenderTarget
 from numpy import ndarray
 from omegaconf import DictConfig
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
@@ -12,13 +18,6 @@ from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import tqdm
-
-from neddf.camera import BaseCameraCalib, Camera, PinholeCalib
-from neddf.dataset import NeRFSyntheticDataset
-from neddf.logger import NeRFTBLogger
-from neddf.loss import BaseLoss
-from neddf.network import NeRF
-from neddf.render import NeRFRender, RenderTarget
 
 
 class NeRFTrainer:
@@ -160,7 +159,7 @@ class NeRFTrainer:
 
         loss.backward()  # type: ignore
         loss_float = float(loss.item())
-        self.logger.write(loss_float, 1.0,  loss_dict)
+        self.logger.write(loss_float, 1.0, loss_dict)
 
         del loss
         del loss_dict
