@@ -5,7 +5,7 @@ from torch import Tensor, nn
 from torch.nn.functional import relu, sigmoid, softplus
 
 from neddf.network.base_neuralfield import BaseNeuralField
-from neddf.nn_module import PositionalEncoding
+from neddf.nn_module import ScaledPositionalEncoding
 
 
 class NeDDF(BaseNeuralField):
@@ -51,8 +51,8 @@ class NeDDF(BaseNeuralField):
         self.activation: Callable[[Tensor], Tensor] = activation_types[activation_type]
 
         # create positional encoding layers
-        self.pe_pos: PositionalEncoding = PositionalEncoding(embed_pos_rank)
-        self.pe_dir: PositionalEncoding = PositionalEncoding(embed_dir_rank)
+        self.pe_pos: ScaledPositionalEncoding = ScaledPositionalEncoding(embed_pos_rank)
+        self.pe_dir: ScaledPositionalEncoding = ScaledPositionalEncoding(embed_dir_rank)
 
         # create layers
         layers_ddf: List[nn.Module] = []
