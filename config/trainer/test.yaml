@@ -2,9 +2,6 @@ optimizer: Adam
 device: "cpu"
 batch_size: 32
 epoch_max: 1
-lambda_color: 1.0
-lambda_mask: 0.1
-lambda_coarse: 0.1
 scheduler_lr: 0.99815
 optimizer_lr: 0.0005
 optimizer_weight_decay: 0.0

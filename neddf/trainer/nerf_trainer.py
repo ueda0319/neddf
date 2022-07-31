@@ -15,6 +15,7 @@ from tqdm import tqdm
 
 from neddf.camera import BaseCameraCalib, Camera, PinholeCalib
 from neddf.dataset import NeRFSyntheticDataset
+from neddf.loss import BaseLoss
 from neddf.network import NeRF
 from neddf.render import NeRFRender, RenderTarget
 
@@ -59,6 +60,11 @@ class NeRFTrainer:
                 self.device
             )
             for camera_id in range(frame_length)
+        ]
+
+        self.loss_functions: List[BaseLoss] = [
+            hydra.utils.instantiate(loss_function).to(self.device)
+            for loss_function in self.config.loss.functions
         ]
 
         self.optimizer: Adam = Adam(
@@ -116,53 +122,51 @@ class NeRFTrainer:
         uv: Tensor = torch.stack([us_int, vs_int], 1)
 
         render_result: Dict[str, Tensor] = self.neural_render.render_rays(uv, camera)
-        rgb_result: Tensor = render_result["color"]
-        rgb_coarse_result: Tensor = render_result["color_coarse"]
-        mask_result: Tensor = torch.clamp(
-            1.0 - render_result["transmittance"], 1e-6, 1.0 - 1e-6
-        )
-        mask_coarse_result: Tensor = torch.clamp(
-            1.0 - render_result["transmittance"], 1e-6, 1.0 - 1e-6
-        )
 
-        rgb_gt_np: ndarray = (1.0 / 256) * np.stack(
-            [rgb[v, u, :] for u, v in zip(us_int, vs_int)]
-        ).astype(np.float32)
-        mask_gt_np: ndarray = (1.0 / 256) * np.stack(
-            [mask[v, u] for u, v in zip(us_int, vs_int)]
-        ).astype(np.float32)
-        rgb_gt: Tensor = torch.from_numpy(rgb_gt_np).to(torch.float32).to(self.device)
-        mask_gt: Tensor = torch.from_numpy(mask_gt_np).to(torch.float32).to(self.device)
+        loss_types: List[str] = [type(func).__name__ for func in self.loss_functions]
+        targets: Dict[str, Tensor] = {}
+        if "ColorLoss" in loss_types:
+            rgb_gt_np: ndarray = (1.0 / 256) * np.stack(
+                [rgb[v, u, :] for u, v in zip(us_int, vs_int)]
+            ).astype(np.float32)
+            targets["color"] = (
+                torch.from_numpy(rgb_gt_np).to(torch.float32).to(self.device)
+            )
 
-        # calculate color loss
-        loss_color: Tensor = torch.mean(torch.square(rgb_result - rgb_gt))
-        loss_color_coarse: Tensor = torch.mean(torch.square(rgb_coarse_result - rgb_gt))
-        # calculate mask loss
-        loss_mask: Tensor = -torch.mean(
-            mask_gt * torch.log(mask_result)
-            + (1.0 - mask_gt) * torch.log(1.0 - mask_result)
-        )
-        loss_mask_coarse: Tensor = -torch.mean(
-            mask_gt * torch.log(mask_coarse_result)
-            + (1.0 - mask_gt) * torch.log(1.0 - mask_coarse_result)
-        )
+        if "MaskBCELoss" in loss_types:
+            mask_gt_np: ndarray = (1.0 / 256) * np.stack(
+                [mask[v, u] for u, v in zip(us_int, vs_int)]
+            ).astype(np.float32)
+            targets["mask"] = (
+                torch.from_numpy(mask_gt_np).to(torch.float32).to(self.device)
+            )
 
-        # parameters of mixing ratio
-        lambda_color: Final[float] = self.config.trainer.lambda_color
-        lambda_mask: Final[float] = self.config.trainer.lambda_mask
-        lambda_coarse: Final[float] = self.config.trainer.lambda_coarse
-        # mix loss
-        loss = lambda_color * (
-            loss_color + lambda_coarse * loss_color_coarse
-        ) + lambda_mask * (loss_mask + lambda_coarse * loss_mask_coarse)
+        if "AuxGradLoss" in loss_types:
+            targets["aux_grad_penalty"] = torch.zeros_like(
+                render_result["aux_grad_penalty"]
+            )
+
+        if "RangeLoss" in loss_types:
+            targets["range_penalty"] = torch.zeros_like(render_result["range_penalty"])
+
+        loss_dict: Dict[str, Tensor] = {}
+        for loss_function in self.loss_functions:
+            loss_dict.update(loss_function(render_result, targets))
+        loss = torch.sum(torch.stack(list(loss_dict.values())))
 
         loss.backward()  # type: ignore
-        self.optimizer.step()
+        loss_float = float(loss.item())
 
-        return float(loss.item())
+        del loss
+        del loss_dict
+
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+
+        return loss_float
 
     def render_test(
-        self, output_dir: Path, camera_id: int, downsampling: int = 1, chunk: int = 128
+        self, output_dir: Path, camera_id: int, downsampling: int = 1
     ) -> None:
         rgb = self.dataset[camera_id]["rgb_images"]
         camera = self.cameras[camera_id]
@@ -173,7 +177,7 @@ class NeRFTrainer:
 
         # render images with target_types "color" and "depth"
         images = self.neural_render.render_image(
-            w, h, camera, target_types, downsampling, chunk
+            w, h, camera, target_types, downsampling, self.config.trainer.chunk
         )
         rgb_np = (
             torch.clamp(images["color"] * 255, 0, 255)
