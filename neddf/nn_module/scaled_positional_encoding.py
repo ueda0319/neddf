@@ -41,7 +41,13 @@ class ScaledPositionalEncoding(nn.Module):
             .reshape(-1, 1)
             .to(x.device)
         )
-        scale: Tensor = torch.tensor([1.0 / (2.0**(t*0.5)) for t in range(self.embed_dim)]).to(x.device).reshape(1, -1, 1).expand(-1,-1,input_dim).reshape(1, -1)
+        scale: Tensor = (
+            torch.tensor([1.0 / (2.0 ** (t * 0.5)) for t in range(self.embed_dim)])
+            .to(x.device)
+            .reshape(1, -1, 1)
+            .expand(-1, -1, input_dim)
+            .reshape(1, -1)
+        )
         p: Tensor = torch.matmul(freq, x.reshape(batch_size, 1, input_dim)).reshape(
             batch_size, -1
         )
