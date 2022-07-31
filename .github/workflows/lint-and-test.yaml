@@ -1,49 +1,27 @@
 name: Lint and test
 on: [pull_request]
 
-env:
-  DOCKER_COMPOSE_DIRECTORY: environments/cpu
-  COMPOSE_DOCKER_CLI_BUILD: 1
-  DOCKER_BUILDKIT: 1
-
 jobs:
   lint-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
         with:
-          persist-credentials: false
-      - run: pwd && docker-compose --version && docker --version
-
-      - name: Build docker image
-        run: docker-compose build --parallel core
-        working-directory: ${{ env.DOCKER_COMPOSE_DIRECTORY }}
-
-      - name: Start docker container
-        run: docker-compose up -d core
-        working-directory: ${{ env.DOCKER_COMPOSE_DIRECTORY }}
-      
-      - name: Github config
+          python-version: 3.8
+      - name: Install Poetry
         run: |
-          git config --local user.email "i.ueda0319@gmail.com"
-          git config --local user.name "ueda0319"
-          git config core.filemode false
-
-      - name: Install dependencies
-        run: docker-compose exec -T core poetry install --no-interaction
-        working-directory: ${{ env.DOCKER_COMPOSE_DIRECTORY }}
-
-      - name: Run lint
-        run: docker-compose exec -T core poetry run pysen run lint
-        working-directory: ${{ env.DOCKER_COMPOSE_DIRECTORY }}
-
-      # pytest-cov export coverage data to a file
-      # However, the directory made by actions/checkout does not allow write
-      # chmod is needed to resolve above problem
-      - name: Change permission
-        run: chmod 777 .
-
-      - name: Run test code
-        run: docker-compose exec -T core make test
-        working-directory: ${{ env.DOCKER_COMPOSE_DIRECTORY }}
+          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+          echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+      - name: Install Packages
+        run: |
+          poetry install
+      - name: Run Lint
+        run: |
+          poetry run pysen run lint
+      - name: Run Test
+        run: |
+          poetry run pytest
