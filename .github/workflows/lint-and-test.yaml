@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - run: pwd && docker-compose --version && docker --version
 
       - name: Build docker image
@@ -27,6 +27,12 @@ jobs:
       # chmod is needed to resolve above problem
       - name: Change permission
         run: chmod 777 .
+      
+      - name: Github config
+        run: |
+        git config --local user.email "i.ueda0319@gmail.com"
+        git config --local user.name "ueda0319"
+        git config core.filemode false
 
       - name: Install dependencies
         run: docker-compose exec -T core poetry install --no-interaction
