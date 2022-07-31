@@ -1,5 +1,3 @@
-from typing import Dict
-
 import torch
 from torch import Tensor
 
@@ -17,19 +15,19 @@ class ColorLoss(BaseLoss):
         weight_coarse (float): weight for color loss in coarse model
     """
 
-    def forward(
-        self, outputs: Dict[str, Tensor], targets: Dict[str, Tensor]
-    ) -> Dict[str, Tensor]:
-        assert "color" in outputs
-        assert "color" in targets
-        loss_dict: Dict[str, Tensor] = {}
-        loss_dict["color"] = torch.mean(
-            torch.square(outputs["color"] - targets["color"])
+    def __init__(
+        self,
+        weight: float = 1.0,
+        weight_coarse: float = 0.1,
+    ) -> None:
+        super().__init__(
+            key_output="color",
+            key_target="color",
+            key_loss="color",
+            weight=weight,
+            weight_coarse=weight_coarse,
         )
-        if self.weight_coarse > 0.0:
-            assert "color_coarse" in outputs
-            loss_dict["color_coarse"] = torch.mean(
-                torch.square(outputs["color_coarse"] - targets["color"])
-            )
 
-        return loss_dict
+    def loss(self, output: Tensor, target: Tensor) -> Tensor:
+        res = torch.mean(torch.square(output - target))
+        return res

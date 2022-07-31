@@ -1,5 +1,3 @@
-from typing import Dict
-
 import torch
 from torch import Tensor
 
@@ -17,20 +15,18 @@ class MaskBCELoss(BaseLoss):
         weight_coarse (float): weight for mask loss in coarse model
     """
 
-    def forward(
-        self, outputs: Dict[str, Tensor], targets: Dict[str, Tensor]
-    ) -> Dict[str, Tensor]:
-        assert "transmittance" in outputs
-        assert "mask" in targets
-        loss_dict: Dict[str, Tensor] = {}
-        loss_dict["mask"] = self.loss(outputs["transmittance"], targets["mask"])
-        if self.weight_coarse > 0.0:
-            assert "transmittance_coarse" in outputs
-            loss_dict["mask_coarse"] = self.loss(
-                outputs["transmittance_coarse"], targets["mask"]
-            )
-
-        return loss_dict
+    def __init__(
+        self,
+        weight: float = 1.0,
+        weight_coarse: float = 0.1,
+    ) -> None:
+        super().__init__(
+            key_output="transmittance",
+            key_target="mask",
+            key_loss="mask",
+            weight=weight,
+            weight_coarse=weight_coarse,
+        )
 
     def loss(self, output: Tensor, target: Tensor) -> Tensor:
         mask_output: Tensor = torch.clamp(1.0 - output, 1e-6, 1.0 - 1e-6)
