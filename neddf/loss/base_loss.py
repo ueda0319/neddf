@@ -28,7 +28,9 @@ class BaseLoss(ABC, nn.Module):
         assert self.key_output in outputs
         assert self.key_target in targets
         loss_dict: Dict[str, Tensor] = {}
-        loss_dict[self.key_loss] = self.weight * self.loss(outputs[self.key_output], targets[self.key_target])
+        loss_dict[self.key_loss] = self.weight * self.loss(
+            outputs[self.key_output], targets[self.key_target]
+        )
         if self.weight_coarse > 0.0:
             key_output_coarse: str = "{}_coarse".format(self.key_output)
             key_loss_coarse: str = "{}_coarse".format(self.key_loss)

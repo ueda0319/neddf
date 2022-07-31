@@ -116,8 +116,9 @@ class NeRFRender(BaseNeuralRender):
         for key in values_coarse:
             if "penalty" in key:
                 integrate_coarse[key] = torch.sum(
-                    delta_coarse.detach() * values_coarse[key].reshape(batch_size, -1)[:, :-1],
-                    dim=1
+                    delta_coarse.detach()
+                    * values_coarse[key].reshape(batch_size, -1)[:, :-1],
+                    dim=1,
                 )
 
         with torch.no_grad():  # type: ignore
@@ -140,8 +141,9 @@ class NeRFRender(BaseNeuralRender):
         for key in values_fine:
             if "penalty" in key:
                 integrate[key] = torch.sum(
-                    delta_fine.detach() * values_fine[key].reshape(batch_size, -1)[:, :-1],
-                    dim=1
+                    delta_fine.detach()
+                    * values_fine[key].reshape(batch_size, -1)[:, :-1],
+                    dim=1,
                 )
         for key in integrate_coarse:
             key_coarse = "{}_coarse".format(key)
@@ -200,9 +202,10 @@ class NeRFRender(BaseNeuralRender):
                 integrate = self.render_rays(uv[below:above, :], camera)
                 for key in target_types:
                     integrates[key].append(integrate[key].detach())
-                
+
             images: Dict[str, Tensor] = {
-                key: torch.cat(integrates[key], 0).reshape(h, w, -1) for key in target_types
+                key: torch.cat(integrates[key], 0).reshape(h, w, -1)
+                for key in target_types
             }
             self.network_coarse.train(True)
             self.network_fine.train(True)

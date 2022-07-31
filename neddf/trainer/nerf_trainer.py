@@ -129,20 +129,25 @@ class NeRFTrainer:
             rgb_gt_np: ndarray = (1.0 / 256) * np.stack(
                 [rgb[v, u, :] for u, v in zip(us_int, vs_int)]
             ).astype(np.float32)
-            targets["color"] = torch.from_numpy(rgb_gt_np).to(torch.float32).to(self.device)
+            targets["color"] = (
+                torch.from_numpy(rgb_gt_np).to(torch.float32).to(self.device)
+            )
 
         if "MaskBCELoss" in loss_types:
             mask_gt_np: ndarray = (1.0 / 256) * np.stack(
                 [mask[v, u] for u, v in zip(us_int, vs_int)]
             ).astype(np.float32)
-            targets["mask"] = torch.from_numpy(mask_gt_np).to(torch.float32).to(self.device)
+            targets["mask"] = (
+                torch.from_numpy(mask_gt_np).to(torch.float32).to(self.device)
+            )
 
         if "AuxGradLoss" in loss_types:
-            targets["aux_grad_penalty"] = torch.zeros_like(render_result["aux_grad_penalty"])
+            targets["aux_grad_penalty"] = torch.zeros_like(
+                render_result["aux_grad_penalty"]
+            )
 
         if "RangeLoss" in loss_types:
             targets["range_penalty"] = torch.zeros_like(render_result["range_penalty"])
-
 
         loss_dict: Dict[str, Tensor] = {}
         for loss_function in self.loss_functions:
