@@ -7,62 +7,44 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
-torch = { version = "=1.10.2+cu111", source = "pytorch-cu111" }
-opencv-python = "^4.5.5.64"
+setuptools = "59.5.0"
+torch = {version = "1.10.2+cu111", source = "pytorch-cu111"}
+scipy = "^1.9.0"
 tqdm = "^4.64.0"
-scipy = "^1.8.0"
-tensorboard = "^2.8.0"
 PyYAML = "^6.0"
+opencv-python = "^4.6.0.66"
+tensorboard = "^2.9.1"
 torchtyping = "^0.1.4"
-hydra-core = "^1.1.1"
-scikit-image = "^0.19.2"
-wandb = "^0.12.16"
-open3d = "^0.15.2"
+hydra-core = "^1.2.0"
+scikit-image = "^0.19.3"
+pytest = "^7.1.2"
+pytest-cov = "^3.0.0"
+pytest-mock = "^3.8.2"
 
 [tool.poetry.group.dev.dependencies]
-black = "^22.3.0"
-flake8 = "^4.0.1"
-isort = "^5.10.1"
-mypy = "^0.942"
-pytest-cov = "^3.0.0"
-pytest-mock = "^3.7.0"
+pysen = {version = "0.10.2", extras = ["lint"]}
 
 [[tool.poetry.source]]
 name = "pytorch-cu111"
 url = "https://download.pytorch.org/whl/cu111/"
 secondary = true
 
-[tool.black]
-line-length = 88
+[tool.pysen]
+version = "0.10"
 
-[tool.isort]
-profile = "black"
+[tool.pysen.lint]
+enable_black = true
+enable_flake8 = true
+enable_isort = true
+enable_mypy = true
+mypy_preset = "strict"
 line_length = 88
+py_version = "py38"
 
-[tool.mypy]
-python_version = 3.8
-# following setting is same as pysen
-# https://github.com/pfnet/pysen/blob/main/setup.cfg#L12
-check_untyped_defs = true
-disallow_any_decorated = false
-disallow_any_generics = false
-disallow_any_unimported = false
-disallow_incomplete_defs = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_decorators = false
-disallow_untyped_defs = true
-ignore_errors = false
-ignore_missing_imports = true
-no_implicit_optional = true
-show_error_codes = true
-strict_equality = true
-strict_optional = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-warn_unused_ignores = true
+[tool.pysen.lint.source]
+  includes = ["neddf/"]
+[[tool.pysen.lint.mypy_targets]]
+  paths = ["neddf"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

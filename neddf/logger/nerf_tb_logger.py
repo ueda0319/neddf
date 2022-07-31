@@ -1,6 +1,7 @@
 from typing import Dict
 
 from torch.utils.tensorboard import SummaryWriter
+import datetime
 
 from .nerf_logger_abstract import NeRFLoggerAbstract
 
@@ -8,13 +9,14 @@ from .nerf_logger_abstract import NeRFLoggerAbstract
 class NeRFTBLogger(NeRFLoggerAbstract):
     """Logger using TensorBoard."""
 
-    def __init__(self, log_dir: str) -> None:
+    def __init__(self) -> None:
         """
 
         Args:
             log_dir (str): Directory to log output
         """
         super().__init__()
+        log_dir = "log"
         self.writer: SummaryWriter = SummaryWriter(log_dir=log_dir)  # type: ignore # noqa
 
     def _next_impl(self, data: Dict) -> None:
@@ -31,7 +33,7 @@ if __name__ == "__main__":
     import random
     from time import sleep
 
-    logger = NeRFTBLogger("log")
+    logger = NeRFTBLogger()
     for _ in range(20):
         logger.write_batchstart()
         sleep(1.0 + random.random())
