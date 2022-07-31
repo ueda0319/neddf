@@ -5,7 +5,7 @@ from torch import Tensor, nn
 from torch.nn.functional import relu, sigmoid, softplus
 
 from neddf.network.base_neuralfield import BaseNeuralField
-from neddf.nn_module import ScaledPositionalEncoding
+from neddf.nn_module import ScaledPositionalEncoding, tanhExp
 
 
 class NeDDF(BaseNeuralField):
@@ -17,7 +17,7 @@ class NeDDF(BaseNeuralField):
         ddf_layer_width: int = 256,
         col_layer_count: int = 8,
         col_layer_width: int = 256,
-        activation_type: str = "ReLU",
+        activation_type: str = "tanhExp",
         d_near: float = 0.01,
         skips: Optional[List[int]] = None,
     ) -> None:
@@ -45,7 +45,8 @@ class NeDDF(BaseNeuralField):
         self.skips = skips
 
         activation_types: Final[Dict[str, Callable[[Tensor], Tensor]]] = {
-            "ReLU": nn.ReLU()
+            "ReLU": nn.ReLU(),
+            "tanhExp": tanhExp,
         }
 
         self.activation: Callable[[Tensor], Tensor] = activation_types[activation_type]

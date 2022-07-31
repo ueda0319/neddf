@@ -6,6 +6,6 @@ ddf_layer_width: 256
 col_layer_count: 8
 col_layer_width: 256
 d_near: 0.01
-activation_type: "ReLU"
+activation_type: "tanhExp"
 skips:
   - 4
