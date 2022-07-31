@@ -32,9 +32,9 @@ jobs:
       
       - name: Github config
         run: |
-        git config --local user.email "i.ueda0319@gmail.com"
-        git config --local user.name "ueda0319"
-        git config core.filemode false
+          git config --local user.email "i.ueda0319@gmail.com"
+          git config --local user.name "ueda0319"
+          git config core.filemode false
 
       - name: Install dependencies
         run: docker-compose exec -T core poetry install --no-interaction
