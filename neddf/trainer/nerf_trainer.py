@@ -236,5 +236,7 @@ class NeRFTrainer:
     def save_field_slice(self, output_field_dir: Path, epoch: int = 0) -> None:
         images: Dict[str, ndarray] = self.neural_render.render_field_slice(self.device)
         for key in images:
-            write_path: Path = output_field_dir / "field_{}_{:04}.png".format(key, epoch)
+            write_path: Path = output_field_dir / "field_{}_{:04}.png".format(
+                key, epoch
+            )
             cv2.imwrite(str(write_path), images[key])

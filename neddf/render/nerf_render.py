@@ -1,15 +1,15 @@
 from typing import Any, Dict, Final, Iterable, List, Literal
 
+import cv2
+import numpy as np
 import torch
 from neddf.camera import Camera
 from neddf.network import BaseNeuralField
 from neddf.render.base_neural_render import BaseNeuralRender
+from numpy import ndarray
 from torch import Tensor
 from torch.nn.functional import relu
-import numpy as np
-from numpy import ndarray
 from tqdm import tqdm
-import cv2
 
 RenderTarget = Literal["color", "depth", "transmittance"]
 
@@ -225,13 +225,13 @@ class NeRFRender(BaseNeuralRender):
         self.network_fine.set_iter(iter)
 
     def render_field_slice(
-        self, 
+        self,
         device: torch.device,
         slice_y: float = 0.0,
         render_size: float = 1.1,
         render_resolution: int = 128,
     ) -> Dict[str, ndarray]:
-        with torch.no_grad():
+        with torch.set_grad_enabled(False):
             xs = (
                 torch.linspace(-render_size, render_size, render_resolution)
                 .to(device)
@@ -262,15 +262,21 @@ class NeRFRender(BaseNeuralRender):
                 "aux_grad": 256.0,
             }
             for value_type in values:
-                if not value_type in scales:
+                if value_type not in scales:
                     continue
-                field: ndarray = scales[value_type] * values[value_type].reshape(render_resolution, render_resolution, -1).detach().cpu().numpy()
-                if field.shape[2]==1:
-                    field_cv: ndarray = cv2.applyColorMap(field.clip(0,255).astype(np.uint8), cv2.COLORMAP_JET)
+                field: ndarray = (
+                    scales[value_type]
+                    * values[value_type]
+                    .reshape(render_resolution, render_resolution, -1)
+                    .detach()
+                    .cpu()
+                    .numpy()
+                )
+                if field.shape[2] == 1:
+                    field_cv: ndarray = cv2.applyColorMap(
+                        field.clip(0, 255).astype(np.uint8), cv2.COLORMAP_JET
+                    )
                 else:
-                    field_cv = field.clip(0,255).astype(np.uint8)
+                    field_cv = field.clip(0, 255).astype(np.uint8)
                 fields[value_type] = field_cv
             return fields
-
-
-        
