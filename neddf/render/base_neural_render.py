@@ -109,3 +109,13 @@ class BaseNeuralRender(ABC, nn.Module):
         camera: Camera,
     ) -> Dict[str, Tensor]:
         raise NotImplementedError()
+
+    def set_iter(self, iter: int) -> None:
+        """Set iteration
+
+        This methods set iteration number for configure warm ups
+
+        Args:
+            iter (int): current iteration. Set -1 for evaluation.
+        """
+        pass

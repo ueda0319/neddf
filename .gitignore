@@ -7,6 +7,7 @@ __pycache__
 .mypy_cache
 .pytest_cache
 .venv
+nohup.out
 !data/test_metalball
 !data/README.md
 !models/README.md

@@ -1,5 +1,5 @@
 _target_: neddf.network.NeDDF
-embed_pos_rank: 6
+embed_pos_rank: 10
 embed_dir_rank: 4
 ddf_layer_count: 8
 ddf_layer_width: 256

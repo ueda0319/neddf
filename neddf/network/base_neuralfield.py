@@ -5,6 +5,16 @@ from torch import Tensor, nn
 
 
 class BaseNeuralField(ABC, nn.Module):
+    def set_iter(self, iter: int) -> None:
+        """Set iteration
+
+        This methods set iteration number for configure warm ups
+
+        Args:
+            iter (int): current iteration. Set -1 for evaluation.
+        """
+        pass
+
     @abstractmethod
     def forward(
         self,

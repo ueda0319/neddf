@@ -209,3 +209,14 @@ class NeRFRender(BaseNeuralRender):
             self.network_coarse.train(True)
             self.network_fine.train(True)
         return images
+
+    def set_iter(self, iter: int) -> None:
+        """Set iteration
+
+        This methods set iteration number for configure warm ups
+
+        Args:
+            iter (int): current iteration. Set -1 for evaluation.
+        """
+        self.network_coarse.set_iter(iter)
+        self.network_fine.set_iter(iter)
