@@ -1,6 +1,6 @@
 # Neural Density-Distance Fields
 
-### [Project Page](https://ueda0319.github.io/neddf/) | [arXiv (coming soon)]()
+### [Project Page](https://ueda0319.github.io/neddf/) | [arXiv](https://arxiv.org/abs/2207.14455)
 
 PyTorch implementation of Neural Distance-Density Field (NeDDF), a 3D representation that reciprocally constrains the distance and density fields (CODE COMING SOON).
 
