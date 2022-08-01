@@ -201,6 +201,7 @@ class NeDDF(BaseNeuralField):
             "color": color.reshape(batch_size, sampling, 3),
             "aux_grad_penalty": ag_penalty.reshape(batch_size, sampling),
             "range_penalty": s_penalty.reshape(batch_size, sampling),
+            "aux_grad": aux_grad.reshape(batch_size, sampling),
         }
         return output_dict
 
@@ -258,6 +259,7 @@ class NeDDF(BaseNeuralField):
                 "distance": distance.reshape(batch_size, sampling),
                 "density": density.reshape(batch_size, sampling),
                 "color": color.reshape(batch_size, sampling, 3),
+                "aux_grad": aux_grad.reshape(batch_size, sampling),
             }
         return output_dict
 
