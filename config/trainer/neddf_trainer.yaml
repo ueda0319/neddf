@@ -1,8 +1,8 @@
 optimizer: Adam
 device: "cuda:0"
-batch_size: 64
-chunk: 128
+batch_size: 128
+chunk: 256
 epoch_max: 2000
 scheduler_lr: 0.99815
-optimizer_lr: 0.0005
+optimizer_lr: 0.0002
 optimizer_weight_decay: 0.0

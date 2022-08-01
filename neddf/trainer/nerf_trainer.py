@@ -9,7 +9,7 @@ from neddf.camera import BaseCameraCalib, Camera, PinholeCalib
 from neddf.dataset import NeRFSyntheticDataset
 from neddf.logger import NeRFTBLogger
 from neddf.loss import BaseLoss
-from neddf.network import NeRF
+from neddf.network import BaseNeuralField
 from neddf.render import NeRFRender, RenderTarget
 from numpy import ndarray
 from omegaconf import DictConfig
@@ -38,12 +38,14 @@ class NeRFTrainer:
         self.dataset: NeRFSyntheticDataset = hydra.utils.instantiate(
             self.config.dataset
         )
-        network_coarse: NeRF = hydra.utils.instantiate(self.config.network).to(
-            self.device
-        )
-        network_fine: NeRF = hydra.utils.instantiate(self.config.network).to(
-            self.device
-        )
+        network_fine: BaseNeuralField = hydra.utils.instantiate(
+            self.config.network,
+            is_coarse=False,
+        ).to(self.device)
+        network_coarse: BaseNeuralField = hydra.utils.instantiate(
+            self.config.network,
+            is_coarse=True,
+        ).to(self.device)
         self.neural_render: NeRFRender = hydra.utils.instantiate(
             self.config.render,
             network_coarse=network_coarse,
@@ -87,6 +89,7 @@ class NeRFTrainer:
         frame_length: Final[int] = len(self.dataset)
         for epoch in range(0, self.config.trainer.epoch_max + 1):
             print("epoch: ", epoch)
+            self.neural_render.set_iter(epoch)
             camera_ids = np.random.permutation(frame_length)
             for camera_id in tqdm(camera_ids):
                 self.run_train_step(camera_id)

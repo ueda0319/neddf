@@ -15,6 +15,7 @@ class NeRF(BaseNeuralField):
         layer_width: int = 256,
         activation_type: str = "ReLU",
         skips: Optional[List[int]] = None,
+        is_coarse: bool = False,
     ) -> None:
         """Initializer
 

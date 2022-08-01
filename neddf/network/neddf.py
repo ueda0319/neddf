@@ -2,7 +2,7 @@ from typing import Callable, Dict, Final, List, Optional
 
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
-from neddf.nn_module import ScaledPositionalEncoding, tanhExp
+from neddf.nn_module import PositionalEncoding, ScaledPositionalEncoding, tanhExp
 from torch import Tensor, nn, sigmoid
 from torch.nn.functional import relu, softplus
 
@@ -19,6 +19,7 @@ class NeDDF(BaseNeuralField):
         activation_type: str = "tanhExp",
         d_near: float = 0.01,
         skips: Optional[List[int]] = None,
+        is_coarse: bool = False,
     ) -> None:
         """Initializer
 
@@ -34,9 +35,13 @@ class NeDDF(BaseNeuralField):
 
         """
         super().__init__()
+        if is_coarse:
+            embed_pos_rank -= 3
         # calculate mlp input dimensions after positional encoding
         input_ddf_dim: Final[int] = embed_pos_rank * 6
-        input_col_dim: Final[int] = 6 + embed_dir_rank * 6 + ddf_layer_width
+        input_col_dim: Final[int] = (
+            (embed_pos_rank + embed_dir_rank) * 6 + 3 + ddf_layer_width
+        )
 
         # catch default params with referencial types
         if skips is None:
@@ -51,8 +56,11 @@ class NeDDF(BaseNeuralField):
         self.activation: Callable[[Tensor], Tensor] = activation_types[activation_type]
 
         # create positional encoding layers
-        self.pe_pos: ScaledPositionalEncoding = ScaledPositionalEncoding(embed_pos_rank)
-        self.pe_dir: ScaledPositionalEncoding = ScaledPositionalEncoding(embed_dir_rank)
+        self.pe_pos_scaled: ScaledPositionalEncoding = ScaledPositionalEncoding(
+            embed_pos_rank
+        )
+        self.pe_pos: PositionalEncoding = PositionalEncoding(embed_pos_rank)
+        self.pe_dir: PositionalEncoding = PositionalEncoding(embed_dir_rank)
 
         # create layers
         layers_ddf: List[nn.Module] = []
@@ -74,6 +82,7 @@ class NeDDF(BaseNeuralField):
         self.layers_col = nn.ModuleList(layers_col)
 
         self.d_near: float = d_near
+        self.aux_grad_scale: float = 1.0
 
     def forward(
         self,
@@ -116,16 +125,17 @@ class NeDDF(BaseNeuralField):
         sampling: Final[int] = input_pos.shape[1]
 
         input_pos.requires_grad_(True)
+        embed_pos_scaled: Tensor = self.pe_pos_scaled(input_pos.reshape(-1, 3))
         embed_pos: Tensor = self.pe_pos(input_pos.reshape(-1, 3))
         embed_dir: Tensor = self.pe_dir(input_dir.reshape(-1, 3))
 
-        hx: Tensor = embed_pos
+        hx: Tensor = embed_pos_scaled
         for layer_id, layer in enumerate(self.layers_ddf):
             hx = self.activation(layer(hx))
             if layer_id in self.skips:
-                hx = torch.cat([hx, embed_pos], dim=1)
+                hx = torch.cat([hx, embed_pos_scaled], dim=1)
         distance: Tensor = softplus(hx[:, :1]) + self.d_near
-        aux_grad: Tensor = sigmoid(hx[:, 1:2])
+        aux_grad: Tensor = self.aux_grad_scale * sigmoid(hx[:, 1:2])
         features: Tensor = hx
 
         d_output = torch.ones_like(
@@ -180,11 +190,9 @@ class NeDDF(BaseNeuralField):
         )
         s_penalty = s_penalty_dDdt + s_penalty_distance + s_penalty_aux_grad
 
-        hx = torch.cat(
-            [input_pos.reshape(-1, 3), embed_dir, distance_grad, features], dim=1
-        )
+        hx = torch.cat([embed_pos, embed_dir, distance_grad, features], dim=1)
         for layer in self.layers_col:
-            hx = self.activation(layer(hx))
+            hx = relu(layer(hx))
         color: Tensor = hx
 
         output_dict: Dict[str, Tensor] = {
@@ -207,16 +215,17 @@ class NeDDF(BaseNeuralField):
         with torch.set_grad_enabled(True):
 
             input_pos.requires_grad_(True)
+            embed_pos_scaled: Tensor = self.pe_pos_scaled(input_pos.reshape(-1, 3))
             embed_pos: Tensor = self.pe_pos(input_pos.reshape(-1, 3))
             embed_dir: Tensor = self.pe_dir(input_dir.reshape(-1, 3))
 
-            hx: Tensor = embed_pos
+            hx: Tensor = embed_pos_scaled
             for layer_id, layer in enumerate(self.layers_ddf):
                 hx = self.activation(layer(hx))
                 if layer_id in self.skips:
-                    hx = torch.cat([hx, embed_pos], dim=1)
+                    hx = torch.cat([hx, embed_pos_scaled], dim=1)
             distance: Tensor = softplus(hx[:, :1]) + self.d_near
-            aux_grad: Tensor = sigmoid(hx[:, 1:2])
+            aux_grad: Tensor = self.aux_grad_scale * sigmoid(hx[:, 1:2])
             features: Tensor = hx
 
             d_output = torch.ones_like(
@@ -240,11 +249,9 @@ class NeDDF(BaseNeuralField):
             distance_inv: Tensor = torch.reciprocal(distance)
             density: Tensor = distance_inv * (1 - dDdt)
 
-            hx = torch.cat(
-                [input_pos.reshape(-1, 3), embed_dir, distance_grad, features], dim=1
-            )
+            hx = torch.cat([embed_pos, embed_dir, distance_grad, features], dim=1)
             for layer in self.layers_col:
-                hx = self.activation(layer(hx))
+                hx = relu(layer(hx))
             color: Tensor = hx
 
             output_dict: Dict[str, Tensor] = {
@@ -253,3 +260,13 @@ class NeDDF(BaseNeuralField):
                 "color": color.reshape(batch_size, sampling, 3),
             }
         return output_dict
+
+    def set_iter(self, iter: int) -> None:
+        """Set iteration
+
+        This methods set iteration number for configure warm ups
+
+        Args:
+            iter (int): current iteration. Set -1 for evaluation.
+        """
+        self.aux_grad_scale = min(1.0, 0.01 * iter)

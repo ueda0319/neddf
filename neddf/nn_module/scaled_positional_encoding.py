@@ -37,12 +37,12 @@ class ScaledPositionalEncoding(nn.Module):
         batch_size: int = x.shape[0]
         input_dim: int = x.shape[1]
         freq: Tensor = (
-            torch.tensor([math.pi * (2.0 ** t) for t in range(self.embed_dim)])
+            torch.tensor([(2.0 ** t) for t in range(self.embed_dim)])
             .reshape(-1, 1)
             .to(x.device)
         )
         scale: Tensor = (
-            torch.tensor([1.0 / (2.0 ** (t * 0.5)) for t in range(self.embed_dim)])
+            torch.tensor([math.pi / (2.0 ** t) for t in range(self.embed_dim)])
             .to(x.device)
             .reshape(1, -1, 1)
             .expand(-1, -1, input_dim)

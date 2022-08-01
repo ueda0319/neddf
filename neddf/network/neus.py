@@ -18,6 +18,7 @@ class NeuS(BaseNeuralField):
         activation_type: str = "ReLU",
         init_variance: float = 0.3,
         skips: Optional[List[int]] = None,
+        is_coarse: bool = False,
     ) -> None:
         """Initializer
 
