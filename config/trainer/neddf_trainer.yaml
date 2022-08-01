@@ -4,5 +4,5 @@ batch_size: 128
 chunk: 256
 epoch_max: 2000
 scheduler_lr: 0.99815
-optimizer_lr: 0.0002
+optimizer_lr: 0.0001
 optimizer_weight_decay: 0.0

@@ -6,7 +6,10 @@ from neddf.network import BaseNeuralField
 from neddf.render.base_neural_render import BaseNeuralRender
 from torch import Tensor
 from torch.nn.functional import relu
+import numpy as np
+from numpy import ndarray
 from tqdm import tqdm
+import cv2
 
 RenderTarget = Literal["color", "depth", "transmittance"]
 
@@ -220,3 +223,54 @@ class NeRFRender(BaseNeuralRender):
         """
         self.network_coarse.set_iter(iter)
         self.network_fine.set_iter(iter)
+
+    def render_field_slice(
+        self, 
+        device: torch.device,
+        slice_y: float = 0.0,
+        render_size: float = 1.1,
+        render_resolution: int = 128,
+    ) -> Dict[str, ndarray]:
+        with torch.no_grad():
+            xs = (
+                torch.linspace(-render_size, render_size, render_resolution)
+                .to(device)
+                .reshape(1, render_resolution)
+                .expand(render_resolution, render_resolution)
+            )
+            zs = -(
+                torch.linspace(-render_size, render_size, render_resolution)
+                .to(device)
+                .reshape(render_resolution, 1)
+                .expand(render_resolution, render_resolution)
+            )
+            ys = torch.zeros(render_resolution, render_resolution).to(device) + slice_y
+
+            sample_pos = torch.cat(
+                [xs[:, :, None], ys[:, :, None], zs[:, :, None]], dim=2
+            )
+            sample_dir = torch.zeros(render_resolution, render_resolution, 3).to(device)
+            sample_dir[:, :, 2] = 1.0
+            self.network_fine.train(False)
+            values: Dict[str, Tensor] = self.network_fine(sample_pos, sample_dir)
+            self.network_fine.train(True)
+            fields: Dict[str, ndarray] = {}
+            scales: Dict[str, float] = {
+                "distance": 256.0,
+                "density": 12.8,
+                "color": 256.0,
+                "aux_grad": 256.0,
+            }
+            for value_type in values:
+                if not value_type in scales:
+                    continue
+                field: ndarray = scales[value_type] * values[value_type].reshape(render_resolution, render_resolution, -1).detach().cpu().numpy()
+                if field.shape[2]==1:
+                    field_cv: ndarray = cv2.applyColorMap(field.clip(0,255).astype(np.uint8), cv2.COLORMAP_JET)
+                else:
+                    field_cv = field.clip(0,255).astype(np.uint8)
+                fields[value_type] = field_cv
+            return fields
+
+
+        

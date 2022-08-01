@@ -85,6 +85,7 @@ class NeRFTrainer:
     def run_train(self) -> None:
         # make directory in hydra's loggin directory for save models
         Path("models").mkdir(parents=True)
+        render_dir: Path = Path("render")
 
         frame_length: Final[int] = len(self.dataset)
         for epoch in range(0, self.config.trainer.epoch_max + 1):
@@ -95,9 +96,14 @@ class NeRFTrainer:
                 self.run_train_step(camera_id)
             self.scheduler.step()
             # TODO parameterize epoch steps to logging in config (might be written in logger)
+            if epoch % 2 == 0:
+                output_field_dir: Path = render_dir / "fields"
+                # make output directory if not exist
+                output_field_dir.mkdir(parents=True, exist_ok=True)
+                self.save_field_slice(output_field_dir, epoch)
             if epoch % 10 == 0:
                 print("test rendering...")
-                output_dir: Path = Path("render/{:04}".format(epoch))
+                output_dir: Path = render_dir / "{:04}".format(epoch)
                 output_dir.mkdir(parents=True)
                 self.render_test(output_dir, camera_ids[0], downsampling=3)
             if epoch % 100 == 0:
@@ -226,3 +232,9 @@ class NeRFTrainer:
         for camera_id in range(frame_length):
             print("rendering from camera {}".format(camera_id))
             self.render_test(output_dir, camera_id, 1)
+
+    def save_field_slice(self, output_field_dir: Path, epoch: int = 0) -> None:
+        images: Dict[str, ndarray] = self.neural_render.render_field_slice(self.device)
+        for key in images:
+            write_path: Path = output_field_dir / "field_{}_{:04}.png".format(key, epoch)
+            cv2.imwrite(str(write_path), images[key])
