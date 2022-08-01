@@ -96,17 +96,17 @@ class NeRFTrainer:
                 self.run_train_step(camera_id)
             self.scheduler.step()
             # TODO parameterize epoch steps to logging in config (might be written in logger)
-            if epoch % 2 == 0:
+            if epoch % self.config.trainer.epoch_save_fields == 0:
                 output_field_dir: Path = render_dir / "fields"
                 # make output directory if not exist
                 output_field_dir.mkdir(parents=True, exist_ok=True)
                 self.save_field_slice(output_field_dir, epoch)
-            if epoch % 10 == 0:
+            if epoch % self.config.trainer.epoch_test_rendering == 0:
                 print("test rendering...")
                 output_dir: Path = render_dir / "{:04}".format(epoch)
                 output_dir.mkdir(parents=True)
                 self.render_test(output_dir, camera_ids[0], downsampling=3)
-            if epoch % 100 == 0:
+            if epoch % self.config.trainer.epoch_save_model == 0:
                 torch.save(
                     self.neural_render.state_dict(),
                     "models/model_{:0=5}.pth".format(epoch),

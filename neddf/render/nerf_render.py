@@ -238,13 +238,13 @@ class NeRFRender(BaseNeuralRender):
                 .reshape(1, render_resolution)
                 .expand(render_resolution, render_resolution)
             )
-            zs = -(
+            ys = -(
                 torch.linspace(-render_size, render_size, render_resolution)
                 .to(device)
                 .reshape(render_resolution, 1)
                 .expand(render_resolution, render_resolution)
             )
-            ys = torch.zeros(render_resolution, render_resolution).to(device) + slice_y
+            zs = torch.zeros(render_resolution, render_resolution).to(device) + slice_y
 
             sample_pos = torch.cat(
                 [xs[:, :, None], ys[:, :, None], zs[:, :, None]], dim=2
