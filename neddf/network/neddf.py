@@ -19,7 +19,6 @@ class NeDDF(BaseNeuralField):
         activation_type: str = "tanhExp",
         d_near: float = 0.01,
         skips: Optional[List[int]] = None,
-        is_coarse: bool = False,
     ) -> None:
         """Initializer
 
@@ -35,8 +34,6 @@ class NeDDF(BaseNeuralField):
 
         """
         super().__init__()
-        if is_coarse:
-            embed_pos_rank -= 3
         # calculate mlp input dimensions after positional encoding
         input_ddf_dim: Final[int] = embed_pos_rank * 6
         input_col_dim: Final[int] = (

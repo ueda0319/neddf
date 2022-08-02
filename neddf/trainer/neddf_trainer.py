@@ -13,8 +13,8 @@ from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import tqdm
 
 
-class NeRFTrainer(BaseTrainer):
-    """NeRFTrainer module.
+class NeDDFTrainer(BaseTrainer):
+    """NeDDFTrainer module.
 
     Attributes:
         config (DictConfig): experiment setting get from hydra

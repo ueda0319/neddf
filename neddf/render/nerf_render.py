@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from neddf.camera import Camera
 from neddf.network import BaseNeuralField
+from neddf.ray import Ray
 from neddf.render.base_neural_render import BaseNeuralRender, RenderTarget
 from numpy import ndarray
 from torch import Tensor
@@ -90,7 +91,7 @@ class NeRFRender(BaseNeuralRender):
         batch_size = uv.shape[0]
         device = uv.device
 
-        rays = camera.create_rays(uv)
+        rays: Ray = camera.create_rays(uv)
 
         # sample distances linearly for coarse sampling
         dists_coarse: Tensor = (
