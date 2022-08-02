@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from neddf.camera import Camera
 from neddf.network import BaseNeuralField
-from neddf.ray import Ray
+from neddf.ray import Ray, Sampling
 from neddf.render.base_neural_render import BaseNeuralRender, RenderTarget
 from numpy import ndarray
 from torch import Tensor
@@ -104,11 +104,8 @@ class NeRFRender(BaseNeuralRender):
             * ((self.dist_far - self.dist_near) / (self.sample_coarse))
         )
         delta_coarse: Tensor = dists_coarse[:, 1:] - dists_coarse[:, :-1]
-        samples_coarse: Dict[str, Tensor] = rays.get_sampling_points(dists_coarse)
-        values_coarse: Dict[str, Tensor] = self.network_coarse(
-            samples_coarse["sample_pos"],
-            samples_coarse["sample_dir"],
-        )
+        samples_coarse: Sampling = rays.get_sampling_points(dists_coarse)
+        values_coarse: Dict[str, Tensor] = self.network_coarse(samples_coarse)
         integrate_coarse: Dict[str, Tensor] = self.integrate_volume_render(
             dists=dists_coarse,
             densities=values_coarse["density"],
@@ -129,11 +126,8 @@ class NeRFRender(BaseNeuralRender):
                 self.sample_fine + 1,
             )
         delta_fine: Tensor = dists_fine[:, 1:] - dists_fine[:, :-1]
-        samples_fine: Dict[str, Tensor] = rays.get_sampling_points(dists_fine)
-        values_fine: Dict[str, Tensor] = self.network_fine(
-            samples_fine["sample_pos"],
-            samples_fine["sample_dir"],
-        )
+        samples_fine: Sampling = rays.get_sampling_points(dists_fine)
+        values_fine: Dict[str, Tensor] = self.network_fine(samples_fine)
         integrate: Dict[str, Tensor] = self.integrate_volume_render(
             dists=dists_fine,
             densities=values_fine["density"],
@@ -250,8 +244,14 @@ class NeRFRender(BaseNeuralRender):
             )
             sample_dir = torch.zeros(render_resolution, render_resolution, 3).to(device)
             sample_dir[:, :, 2] = 1.0
+            diag_variance = torch.zeros_like(sample_pos)
+            sampling: Sampling = Sampling(
+                sample_pos,
+                sample_dir,
+                diag_variance,
+            )
             self.network_fine.train(False)
-            values: Dict[str, Tensor] = self.network_fine(sample_pos, sample_dir)
+            values: Dict[str, Tensor] = self.network_fine(sampling)
             self.network_fine.train(True)
             fields: Dict[str, ndarray] = {}
             scales: Dict[str, float] = {

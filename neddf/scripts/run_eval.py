@@ -23,7 +23,7 @@ def main() -> None:
     conf_dir: Path = output_dir / ".hydra"
     assert conf_dir.is_dir()
     GlobalHydra.instance().clear()
-    hydra.initialize_config_dir(version_base=None, config_dir=conf_dir.as_posix())
+    hydra.initialize_config_dir(config_dir=conf_dir.as_posix())
     cfg: DictConfig = hydra.compose(
         config_name="config", overrides=["dataset.data_split=test"]
     )

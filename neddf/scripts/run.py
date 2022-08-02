@@ -10,7 +10,7 @@ from neddf.trainer import BaseTrainer
 from omegaconf import DictConfig
 
 
-@hydra.main(version_base=None, config_path="../../config", config_name="default")
+@hydra.main(config_path="../../config", config_name="default")
 def main(cfg: DictConfig) -> None:
     cwd: Final[Path] = Path(hydra.utils.get_original_cwd())
     cfg.dataset.dataset_dir = str(cwd / cfg.dataset.dataset_dir)

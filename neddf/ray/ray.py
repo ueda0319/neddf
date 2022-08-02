@@ -1,6 +1,7 @@
-from typing import Dict, Final, Tuple
+from typing import Final, Tuple
 
 import torch
+from neddf.ray.sampling import Sampling
 from torch import Tensor
 
 
@@ -42,7 +43,7 @@ class Ray:
     def get_sampling_points(
         self,
         dists: Tensor,
-    ) -> Dict[str, Tensor]:
+    ) -> Sampling:
         """getSamplingPoints
 
         Obtain 3d positions on the ray calculated from the distances of
@@ -71,8 +72,10 @@ class Ray:
             batch_size, sample_count, 3
         )
         sample_pos: Tensor = sample_orig + sample_dir * dists.unsqueeze(2)
-        result: Dict[str, Tensor] = {
-            "sample_pos": sample_pos,
-            "sample_dir": sample_dir,
-        }
-        return result
+        diag_variance: Tensor = torch.zeros_like(sample_orig)
+        sampling: Sampling = Sampling(
+            sample_pos,
+            sample_dir,
+            diag_variance,
+        )
+        return sampling

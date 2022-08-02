@@ -4,6 +4,7 @@ import torch
 from torch import Tensor
 
 from neddf.network import NeRF
+from neddf.ray import Sampling
 
 
 class TestNeRFNetwork:
@@ -25,12 +26,14 @@ class TestNeRFNetwork:
 
     def test_nerf(self, nerf_fixture):
         batch_size: int = 10
-        sampling: int = 64
-        input_pos: Tensor = torch.zeros(batch_size, sampling, 3, dtype=torch.float32)
-        input_dir: Tensor = torch.zeros(batch_size, sampling, 3, dtype=torch.float32)
+        sampling_size: int = 64
+        input_pos: Tensor = torch.zeros(batch_size, sampling_size, 3, dtype=torch.float32)
+        input_dir: Tensor = torch.zeros(batch_size, sampling_size, 3, dtype=torch.float32)
+        diag_variance: Tensor = torch.zeros(batch_size, sampling_size, 3, dtype=torch.float32)
+        sampling: Sampling = Sampling(input_pos, input_dir, diag_variance)
 
-        network_output: Dict[str, Tensor] = nerf_fixture(input_pos, input_dir)
+        network_output: Dict[str, Tensor] = nerf_fixture(sampling)
         density: Tensor = network_output["density"]
         color: Tensor = network_output["color"]
-        assert density.shape == (batch_size, sampling)
-        assert color.shape == (batch_size, sampling, 3)
+        assert density.shape == (batch_size, sampling_size)
+        assert color.shape == (batch_size, sampling_size, 3)

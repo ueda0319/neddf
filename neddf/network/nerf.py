@@ -3,6 +3,7 @@ from typing import Callable, Dict, Final, List, Optional
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
 from neddf.nn_module import PositionalEncoding
+from neddf.ray import Sampling
 from torch import Tensor, nn
 
 
@@ -70,21 +71,14 @@ class NeRF(BaseNeuralField):
 
     def forward(
         self,
-        input_pos: Tensor,
-        input_dir: Tensor,
+        sampling: Sampling,
     ) -> Dict[str, Tensor]:
         """Forward propagation
 
         This method take radiance field (density + color) with standard MLP.
 
         Args:
-            input_pos (Tensor[batch_size, sampling, 3, float32]):
-                input point positions
-                If you need to use PE, please enter the tensor you have already applied PE.
-            input_dir (Tensor[batch_size, 3, float32]):
-                input point positions
-                If you need to use PE, please enter the tensor you have already applied PE.
-
+            sampling (Sampling[batch_size, sampling, 3])
         Returns:
             Dict[str, Tensor]{
                 'density' (Tensor[batch_size, 1, float32]): density of each input
@@ -104,11 +98,11 @@ class NeRF(BaseNeuralField):
 
         """
         with torch.set_grad_enabled(self.training):
-            batch_size: Final[int] = input_pos.shape[0]
-            sampling: Final[int] = input_pos.shape[1]
+            batch_size: Final[int] = sampling.sample_pos.shape[0]
+            sampling_size: Final[int] = sampling.sample_pos.shape[1]
 
-            embed_pos: Tensor = self.pe_pos(input_pos.reshape(-1, 3))
-            embed_dir: Tensor = self.pe_dir(input_dir.reshape(-1, 3))
+            embed_pos: Tensor = self.pe_pos(sampling.sample_pos.reshape(-1, 3))
+            embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
             hx: Tensor = embed_pos
             for layer_id, layer in enumerate(self.layers):
@@ -121,7 +115,7 @@ class NeRF(BaseNeuralField):
             color = self.outL_color(dir_feature)
 
             output_dict: Dict[str, Tensor] = {
-                "density": density.reshape(batch_size, sampling),
-                "color": color.reshape(batch_size, sampling, 3),
+                "density": density.reshape(batch_size, sampling_size),
+                "color": color.reshape(batch_size, sampling_size, 3),
             }
         return output_dict

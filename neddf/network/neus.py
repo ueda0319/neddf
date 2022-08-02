@@ -3,6 +3,7 @@ from typing import Callable, Dict, Final, List, Optional
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
 from neddf.nn_module import PositionalEncoding
+from neddf.ray import Sampling
 from torch import Tensor, nn
 
 
@@ -76,45 +77,27 @@ class NeuS(BaseNeuralField):
 
     def forward(
         self,
-        input_pos: Tensor,
-        input_dir: Tensor,
+        sampling: Sampling,
     ) -> Dict[str, Tensor]:
         """Forward propagation
 
         This method take radiance field (density + color) with standard MLP.
 
         Args:
-            input_pos (Tensor[batch_size, sampling, 3, float32]):
-                input point positions
-                If you need to use PE, please enter the tensor you have already applied PE.
-            input_dir (Tensor[batch_size, 3, float32]):
-                input point positions
-                If you need to use PE, please enter the tensor you have already applied PE.
+            sampling (Sampling[batch_size, sampling, 3]):
 
         Returns:
             Dict[str, Tensor]{
                 'density' (Tensor[batch_size, 1, float32]): density of each input
                 'color' (Tensor[batch_size, 3, float32]): rgb color of each input
             }
-
-        Notes:
-            Apply range limit function in volume rendering step
-                (original paper use relu for density, sigmoid for color)
-            In original paper, final hidden layer use no activation, but
-                original implementation use activation.
-                Since a hidden layer without activation does not increase the
-                amount of information (ideally), this implementation uses activation.
-            In original paper, dir_feature take one additional dense layer without activation,
-                but our implementation remove it since
-                (since it is possible to create M3 that reproduces M2 [M1 x, d] with M3[x, d])
-
         """
-        batch_size: Final[int] = input_pos.shape[0]
-        sampling: Final[int] = input_pos.shape[1]
+        batch_size: Final[int] = sampling.sample_pos.shape[0]
+        sampling_size: Final[int] = sampling.sample_pos.shape[1]
 
-        input_pos.requires_grad_(True)
-        embed_pos: Tensor = self.pe_pos(input_pos.reshape(-1, 3))
-        embed_dir: Tensor = self.pe_dir(input_dir.reshape(-1, 3))
+        sampling.sample_pos.requires_grad_(True)
+        embed_pos: Tensor = self.pe_pos(sampling.sample_pos.reshape(-1, 3))
+        embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
         hx: Tensor = embed_pos
         for layer_id, layer in enumerate(self.layers_sdf):
@@ -128,7 +111,7 @@ class NeuS(BaseNeuralField):
         # gradients take normal vector
         gradients = torch.autograd.grad(
             outputs=sdf,
-            inputs=input_pos,
+            inputs=sampling.sample_pos,
             grad_outputs=d_output,
             create_graph=True,
             retain_graph=True,
@@ -136,7 +119,8 @@ class NeuS(BaseNeuralField):
         )[0].reshape(-1, 3)
 
         hx = torch.cat(
-            [input_pos.reshape(-1, 3), embed_dir, gradients, sdf_feature], dim=1
+            [sampling.sample_pos.reshape(-1, 3), embed_dir, gradients, sdf_feature],
+            dim=1,
         )
         for layer in self.layers_col:
             hx = self.activation(layer(hx))
@@ -148,8 +132,8 @@ class NeuS(BaseNeuralField):
         )
 
         output_dict: Dict[str, Tensor] = {
-            "sdf": sdf.reshape(batch_size, sampling),
-            "density": density.reshape(batch_size, sampling),
-            "color": color.reshape(batch_size, sampling, 3),
+            "sdf": sdf.reshape(batch_size, sampling_size),
+            "density": density.reshape(batch_size, sampling_size),
+            "color": color.reshape(batch_size, sampling_size, 3),
         }
         return output_dict
