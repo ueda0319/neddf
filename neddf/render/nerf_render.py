@@ -1,6 +1,7 @@
 from typing import Any, Dict, Final, Iterable, List
 
 import cv2
+import hydra
 import numpy as np
 import torch
 from neddf.camera import Camera
@@ -8,6 +9,7 @@ from neddf.network import BaseNeuralField
 from neddf.ray import Ray, Sampling
 from neddf.render.base_neural_render import BaseNeuralRender, RenderTarget
 from numpy import ndarray
+from omegaconf import DictConfig
 from torch import Tensor
 from tqdm import tqdm
 
@@ -15,8 +17,7 @@ from tqdm import tqdm
 class NeRFRender(BaseNeuralRender):
     def __init__(
         self,
-        network_coarse: BaseNeuralField,
-        network_fine: BaseNeuralField,
+        network_config: DictConfig,
         sample_coarse: int = 128,
         sample_fine: int = 128,
         dist_near: float = 2.0,
@@ -24,8 +25,12 @@ class NeRFRender(BaseNeuralRender):
         max_dist: float = 6.0,
     ) -> None:
         super().__init__()
-        self.network_coarse: BaseNeuralField = network_coarse
-        self.network_fine: BaseNeuralField = network_fine
+        self.network_coarse: BaseNeuralField = hydra.utils.instantiate(
+            network_config,
+        )
+        self.network_fine: BaseNeuralField = hydra.utils.instantiate(
+            network_config,
+        )
         self.sample_coarse: Final[int] = sample_coarse
         self.sample_fine: Final[int] = sample_fine
         self.dist_near: Final[float] = dist_near

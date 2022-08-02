@@ -5,7 +5,6 @@ import hydra
 import numpy as np
 import torch
 from neddf.logger import NeRFTBLogger
-from neddf.network import BaseNeuralField
 from neddf.trainer.base_trainer import BaseTrainer
 from torch import Tensor
 from torch.optim import Adam
@@ -25,16 +24,10 @@ class NeRFTrainer(BaseTrainer):
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
-        network_fine: BaseNeuralField = hydra.utils.instantiate(
-            self.config.network,
-        ).to(self.device)
-        network_coarse: BaseNeuralField = hydra.utils.instantiate(
-            self.config.network,
-        ).to(self.device)
         self.neural_render = hydra.utils.instantiate(
             self.config.render,
-            network_coarse=network_coarse,
-            network_fine=network_fine,
+            network_config=self.config.network,
+            _recursive_=False,
         ).to(self.device)
         # Setup Optimizer
         self.optimizer = Adam(
