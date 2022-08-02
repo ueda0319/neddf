@@ -101,7 +101,10 @@ class NeRF(BaseNeuralField):
             batch_size: Final[int] = sampling.sample_pos.shape[0]
             sampling_size: Final[int] = sampling.sample_pos.shape[1]
 
-            embed_pos: Tensor = self.pe_pos(sampling.sample_pos.reshape(-1, 3))
+            pe_weights = sampling.get_pe_weights(self.pe_pos.freq)
+            embed_pos: Tensor = self.pe_pos(
+                sampling.sample_pos.reshape(-1, 3), pe_weights
+            )
             embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
             hx: Tensor = embed_pos

@@ -1,4 +1,5 @@
-from typing import Any, Dict, Final, Iterable, List
+import math
+from typing import Any, Dict, Final, Iterable, List, Literal
 
 import cv2
 import hydra
@@ -13,6 +14,8 @@ from omegaconf import DictConfig
 from torch import Tensor
 from tqdm import tqdm
 
+SamplingType = Literal["point", "cone"]
+
 
 class NeRFRender(BaseNeuralRender):
     def __init__(
@@ -23,24 +26,34 @@ class NeRFRender(BaseNeuralRender):
         dist_near: float = 2.0,
         dist_far: float = 6.0,
         max_dist: float = 6.0,
+        use_coarse_network: bool = True,
+        sampling_type: SamplingType = "point",
     ) -> None:
         super().__init__()
-        self.network_coarse: BaseNeuralField = hydra.utils.instantiate(
-            network_config,
-        )
+        self.use_coarse_network: bool = use_coarse_network
         self.network_fine: BaseNeuralField = hydra.utils.instantiate(
             network_config,
         )
+        if use_coarse_network:
+            self.network_coarse: BaseNeuralField = hydra.utils.instantiate(
+                network_config,
+            )
+        else:
+            self.network_coarse = self.network_fine
         self.sample_coarse: Final[int] = sample_coarse
         self.sample_fine: Final[int] = sample_fine
         self.dist_near: Final[float] = dist_near
         self.dist_far: Final[float] = dist_far
         self.max_dist: Final[float] = max_dist
+        self.sampling_type: SamplingType = sampling_type
 
     def get_parameters_list(self) -> List[Any]:
-        return list(self.network_coarse.parameters()) + list(
-            self.network_fine.parameters()
-        )
+        if self.use_coarse_network:
+            return list(self.network_coarse.parameters()) + list(
+                self.network_fine.parameters()
+            )
+        else:
+            return list(self.network_coarse.parameters())
 
     def render_rays(
         self,
@@ -63,7 +76,12 @@ class NeRFRender(BaseNeuralRender):
             * ((self.dist_far - self.dist_near) / (self.sample_coarse))
         )
         delta_coarse: Tensor = dists_coarse[:, 1:] - dists_coarse[:, :-1]
-        samples_coarse: Sampling = rays.get_sampling_points(dists_coarse)
+        if self.sampling_type == "point":
+            samples_coarse: Sampling = rays.get_sampling_points(dists_coarse)
+        elif self.sampling_type == "cone":
+            # use 1111 for view angle = 0.6911112070083618(rad)
+            ray_radius: float = 1.0 / 1111 / math.sqrt(12)
+            samples_coarse = rays.get_sampling_cones(dists_coarse, ray_radius)
         values_coarse: Dict[str, Tensor] = self.network_coarse(samples_coarse)
         integrate_coarse: Dict[str, Tensor] = self.integrate_volume_render(
             dists=dists_coarse,
@@ -85,7 +103,10 @@ class NeRFRender(BaseNeuralRender):
                 self.sample_fine + 1,
             )
         delta_fine: Tensor = dists_fine[:, 1:] - dists_fine[:, :-1]
-        samples_fine: Sampling = rays.get_sampling_points(dists_fine)
+        if self.sampling_type == "point":
+            samples_fine: Sampling = rays.get_sampling_points(dists_fine)
+        elif self.sampling_type == "cone":
+            samples_fine = rays.get_sampling_cones(dists_fine, ray_radius)
         values_fine: Dict[str, Tensor] = self.network_fine(samples_fine)
         integrate: Dict[str, Tensor] = self.integrate_volume_render(
             dists=dists_fine,
