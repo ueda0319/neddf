@@ -1,17 +1,15 @@
-from typing import Any, Dict, Final, Iterable, List, Literal
+from typing import Any, Dict, Final, Iterable, List
 
 import cv2
 import numpy as np
 import torch
 from neddf.camera import Camera
 from neddf.network import BaseNeuralField
-from neddf.render.base_neural_render import BaseNeuralRender
+from neddf.render.base_neural_render import BaseNeuralRender, RenderTarget
 from numpy import ndarray
 from torch import Tensor
 from torch.nn.functional import relu
 from tqdm import tqdm
-
-RenderTarget = Literal["color", "depth", "transmittance"]
 
 
 class NeRFRender(BaseNeuralRender):
@@ -227,7 +225,7 @@ class NeRFRender(BaseNeuralRender):
     def render_field_slice(
         self,
         device: torch.device,
-        slice_y: float = 0.0,
+        slice_t: float = 0.0,
         render_size: float = 1.1,
         render_resolution: int = 128,
     ) -> Dict[str, ndarray]:
@@ -244,7 +242,7 @@ class NeRFRender(BaseNeuralRender):
                 .reshape(render_resolution, 1)
                 .expand(render_resolution, render_resolution)
             )
-            zs = torch.zeros(render_resolution, render_resolution).to(device) + slice_y
+            zs = torch.zeros(render_resolution, render_resolution).to(device) + slice_t
 
             sample_pos = torch.cat(
                 [xs[:, :, None], ys[:, :, None], zs[:, :, None]], dim=2

@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List, Literal
 
 import torch
 from neddf.camera import Camera
+from numpy import ndarray
 from torch import Tensor, nn
+
+RenderTarget = Literal["color", "depth", "transmittance"]
 
 
 class BaseNeuralRender(ABC, nn.Module):
@@ -108,6 +111,46 @@ class BaseNeuralRender(ABC, nn.Module):
         uv: Tensor,
         camera: Camera,
     ) -> Dict[str, Tensor]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def render_image(
+        self,
+        width: int,
+        height: int,
+        camera: Camera,
+        target_types: Iterable[RenderTarget],
+        downsampling: int = 1,
+        chunk: int = 512,
+    ) -> Dict[str, Tensor]:
+        """render image
+
+        Render image from selected camera.
+
+        Args:
+            width (int): width of original image
+            height (int): height of original image
+            camera (Camera): rendering images from this camera
+            target_types (Iterable[RenderTarget]): type of rendering targets.
+                select a subset of ["color", "depth", "transmittance"]
+            downsampling (int): level of downsampling.
+                For example, specifying 2 reduces the width and height of rendereing by half.
+            chunk (int): number of rays to calculate at one step.
+                Select according to GPU memory size.
+
+        Returns:
+            Dict[str, Tensor]: each type of images which selected in target_types.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def render_field_slice(
+        self,
+        device: torch.device,
+        slice_t: float = 0.0,
+        render_size: float = 1.1,
+        render_resolution: int = 128,
+    ) -> Dict[str, ndarray]:
         raise NotImplementedError()
 
     def set_iter(self, iter: int) -> None:

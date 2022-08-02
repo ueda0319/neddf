@@ -182,7 +182,7 @@ class NeDDF(BaseNeuralField):
         s_penalty_dDdt = torch.square(relu(-1.0 + dDdt))
         # -4.0 < (distance before softplus) < 2.0
         s_penalty_distance = torch.square(
-            relu(-4.0 - hx[:, :1]) + relu(-2.0 + hx[:, :1])
+            relu(-4.0 - hx[:, :1]) + relu(-4.0 + hx[:, :1])
         )
         # -4.0 < (aux_grad before softplus) < 4.0
         s_penalty_aux_grad = torch.square(

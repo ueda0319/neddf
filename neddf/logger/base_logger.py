@@ -1,12 +1,12 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from time import time
 from typing import Dict
 
 from torch import Tensor
 
 
-class NeRFLoggerAbstract:
-    """NeRFLoggerAbstract
+class BaseLogger(ABC):
+    """BaseLogger
 
     Abstruct logger to be implemented.
     """
