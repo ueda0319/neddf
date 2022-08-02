@@ -59,7 +59,6 @@ class NeRFTrainer(BaseTrainer):
             for camera_id in tqdm(camera_ids):
                 self.run_train_step(camera_id)
             self.scheduler.step()
-            # TODO parameterize epoch steps to logging in config (might be written in logger)
             if epoch % self.epoch_save_fields == 0:
                 output_field_dir: Path = render_dir / "fields"
                 # make output directory if not exist

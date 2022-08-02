@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Literal
+from typing import Any, Dict, Final, Iterable, List, Literal
 
 import torch
 from neddf.camera import Camera
 from numpy import ndarray
 from torch import Tensor, nn
+from torch.nn.functional import relu
 
 RenderTarget = Literal["color", "depth", "transmittance"]
 
@@ -100,6 +101,51 @@ class BaseNeuralRender(ABC, nn.Module):
                 .expand(batch_size, -1)
             )
         return samples_cat
+
+    def integrate_volume_render(
+        self,
+        dists: Tensor,
+        densities: Tensor,
+        colors: Tensor,
+    ) -> Dict[str, Tensor]:
+        batch_size: Final[int] = dists.shape[0]
+        sampling_step: Final[int] = dists.shape[1]
+
+        device: Final[torch.device] = dists.device
+        deltas = dists[:, 1:] - dists[:, :-1]
+
+        o = 1 - torch.exp(-relu(densities[:, :-1]) * deltas)
+        t = torch.cumprod(
+            torch.cat([torch.ones((o.shape[0], 1)).to(device), 1.0 - o + 1e-7], 1), 1
+        )
+        w = o * t[:, :-1]
+        assert not torch.any(torch.isnan(w))
+
+        dh = w * dists[:, :-1]
+        ih = w.reshape(batch_size, -1, 1).expand(batch_size, -1, 3) * colors[:, :-1, :]
+        d = torch.sum(dh, dim=1)
+        i = torch.sum(ih, dim=1)
+        dv = torch.sum(
+            w
+            * torch.square(
+                dists[:, :-1]
+                - d.reshape(batch_size, 1).expand(batch_size, sampling_step - 1)
+            ),
+            dim=1,
+        )
+
+        # Black background
+        d += t[:, -1] * self.max_dist
+
+        # TODO: Make dataclass for volumerender result after append other neuralrender models
+        result = {
+            "weight": w,
+            "depth": d,
+            "depth_var": dv,
+            "color": i,
+            "transmittance": t[:, -1],
+        }
+        return result
 
     @abstractmethod
     def get_parameters_list(self) -> List[Any]:

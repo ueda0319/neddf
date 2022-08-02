@@ -2,7 +2,7 @@ from typing import Callable, Dict, Final, List, Optional
 
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
-from neddf.nn_module import PositionalEncoding, ScaledPositionalEncoding, tanhExp
+from neddf.nn_module import PositionalEncoding, tanhExp
 from neddf.ray import Sampling
 from torch import Tensor, nn, sigmoid
 from torch.nn.functional import relu, softplus
@@ -54,9 +54,6 @@ class NeDDF(BaseNeuralField):
         self.activation: Callable[[Tensor], Tensor] = activation_types[activation_type]
 
         # create positional encoding layers
-        self.pe_pos_scaled: ScaledPositionalEncoding = ScaledPositionalEncoding(
-            embed_pos_rank
-        )
         self.pe_pos: PositionalEncoding = PositionalEncoding(embed_pos_rank)
         self.pe_dir: PositionalEncoding = PositionalEncoding(embed_dir_rank)
 
@@ -105,10 +102,20 @@ class NeDDF(BaseNeuralField):
         sampling_size: Final[int] = sampling.sample_pos.shape[1]
 
         sampling.sample_pos.requires_grad_(True)
-        embed_pos_scaled: Tensor = self.pe_pos_scaled(
-            sampling.sample_pos.reshape(-1, 3)
+        # scale PE with distance field to graditent becale same scale
+        pe_pos_scale: Tensor = (
+            torch.reciprocal(self.pe_pos.freq)
+            .to(sampling.sample_pos.device)[None, :, None]
+            .expand(batch_size * sampling_size, -1, 3)
+            .reshape(batch_size * sampling_size, -1)
         )
-        embed_pos: Tensor = self.pe_pos(sampling.sample_pos.reshape(-1, 3))
+        # get weight of PE from sampling size
+        pe_weights = sampling.get_pe_weights(self.pe_pos.freq)
+        embed_pos_scaled: Tensor = self.pe_pos(
+            sampling.sample_pos.reshape(-1, 3),
+            pe_pos_scale * pe_weights,
+        )
+        embed_pos: Tensor = self.pe_pos(sampling.sample_pos.reshape(-1, 3), pe_weights)
         embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
         hx: Tensor = embed_pos_scaled
@@ -197,10 +204,22 @@ class NeDDF(BaseNeuralField):
         with torch.set_grad_enabled(True):
 
             sampling.sample_pos.requires_grad_(True)
-            embed_pos_scaled: Tensor = self.pe_pos_scaled(
-                sampling.sample_pos.reshape(-1, 3)
+            # scale PE with distance field to graditent becale same scale
+            pe_pos_scale: Tensor = (
+                torch.reciprocal(self.pe_pos.freq)
+                .to(sampling.sample_pos.device)[None, :, None]
+                .expand(batch_size * sampling_size, -1, 3)
+                .reshape(batch_size * sampling_size, -1)
             )
-            embed_pos: Tensor = self.pe_pos(sampling.sample_pos.reshape(-1, 3))
+            # get weight of PE from sampling size
+            pe_weights = sampling.get_pe_weights(self.pe_pos.freq)
+            embed_pos_scaled: Tensor = self.pe_pos(
+                sampling.sample_pos.reshape(-1, 3),
+                pe_pos_scale * pe_weights,
+            )
+            embed_pos: Tensor = self.pe_pos(
+                sampling.sample_pos.reshape(-1, 3), pe_weights
+            )
             embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
             hx: Tensor = embed_pos_scaled
