@@ -1,4 +1,4 @@
-optimizer: Adam
+_target_: neddf.trainer.NeRFTrainer
 device: "cuda:0"
 batch_size: 1024
 chunk: 1024

@@ -11,7 +11,10 @@ class TestNeRFSyntheticDataset:
         conf_dir = Path.cwd() / "config"
         assert conf_dir.is_dir()
         GlobalHydra.instance().clear()
-        hydra.initialize_config_dir(config_dir=conf_dir.as_posix())
+        hydra.initialize_config_dir(
+            version_base=None, 
+            config_dir=conf_dir.as_posix()
+        )
         cls.cfg: DictConfig = hydra.compose(
             config_name="default", overrides=["dataset=test"]
         )

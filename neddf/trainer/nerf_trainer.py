@@ -7,7 +7,6 @@ import torch
 from neddf.logger import NeRFTBLogger
 from neddf.network import BaseNeuralField
 from neddf.trainer.base_trainer import BaseTrainer
-from omegaconf import DictConfig
 from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
@@ -21,11 +20,11 @@ class NeRFTrainer(BaseTrainer):
         config (DictConfig): experiment setting get from hydra
     """
 
-    def __init__(
+    def __init__(  # type: ignore
         self,
-        config: DictConfig,
+        **kwargs,
     ) -> None:
-        super().__init__(config)
+        super().__init__(**kwargs)
         network_fine: BaseNeuralField = hydra.utils.instantiate(
             self.config.network,
             is_coarse=False,
@@ -42,12 +41,10 @@ class NeRFTrainer(BaseTrainer):
         # Setup Optimizer
         self.optimizer = Adam(
             self.neural_render.get_parameters_list(),
-            lr=self.config.trainer.optimizer_lr,
-            weight_decay=self.config.trainer.optimizer_weight_decay,
+            lr=self.optimizer_lr,
+            weight_decay=self.optimizer_weight_decay,
         )
-        self.scheduler = ExponentialLR(
-            self.optimizer, gamma=self.config.trainer.scheduler_lr
-        )
+        self.scheduler = ExponentialLR(self.optimizer, gamma=self.scheduler_lr)
         # Use tensorboard Logger
         self.logger = NeRFTBLogger()
 
@@ -57,7 +54,7 @@ class NeRFTrainer(BaseTrainer):
         render_dir: Path = Path("render")
 
         frame_length: Final[int] = len(self.dataset)
-        for epoch in range(0, self.config.trainer.epoch_max + 1):
+        for epoch in range(0, self.epoch_max + 1):
             print("epoch: ", epoch)
             self.neural_render.set_iter(epoch)
             camera_ids = np.random.permutation(frame_length)
@@ -65,17 +62,17 @@ class NeRFTrainer(BaseTrainer):
                 self.run_train_step(camera_id)
             self.scheduler.step()
             # TODO parameterize epoch steps to logging in config (might be written in logger)
-            if epoch % self.config.trainer.epoch_save_fields == 0:
+            if epoch % self.epoch_save_fields == 0:
                 output_field_dir: Path = render_dir / "fields"
                 # make output directory if not exist
                 output_field_dir.mkdir(parents=True, exist_ok=True)
                 self.render_field_slices(output_field_dir, epoch)
-            if epoch % self.config.trainer.epoch_test_rendering == 0:
+            if epoch % self.epoch_test_rendering == 0:
                 print("test rendering...")
                 output_dir: Path = render_dir / "{:04}".format(epoch)
                 output_dir.mkdir(parents=True)
                 self.render_test(output_dir, camera_ids[0], downsampling=3)
-            if epoch % self.config.trainer.epoch_save_model == 0:
+            if epoch % self.epoch_save_model == 0:
                 torch.save(
                     self.neural_render.state_dict(),
                     "models/model_{:0=5}.pth".format(epoch),
@@ -85,7 +82,7 @@ class NeRFTrainer(BaseTrainer):
         self.logger.write_batchstart()
 
         self.optimizer.zero_grad()
-        batch_size: Final[int] = self.config.trainer.batch_size
+        batch_size: Final[int] = self.batch_size
         rgb = self.dataset[camera_id]["rgb_images"]
         camera = self.cameras[camera_id]
 

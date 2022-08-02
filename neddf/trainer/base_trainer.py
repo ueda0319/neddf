@@ -1,23 +1,23 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Final, List
 from pathlib import Path
+from typing import Dict, Final, List
 
 import cv2
-import torch
-import numpy as np
 import hydra
+import numpy as np
+import torch
+from neddf.camera import BaseCameraCalib, Camera, PinholeCalib
+from neddf.dataset import BaseDataset
+from neddf.logger import BaseLogger
+from neddf.loss import BaseLoss
+from neddf.render import BaseNeuralRender, RenderTarget
+from numpy import ndarray
 from omegaconf import DictConfig
-from torch import Tensor, nn
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
-from neddf.camera import BaseCameraCalib, Camera, PinholeCalib
-from neddf.dataset import BaseDataset
-from neddf.render import BaseNeuralRender, RenderTarget
-from neddf.loss import BaseLoss
-from neddf.logger import BaseLogger
-from numpy import ndarray
-from skimage.metrics import peak_signal_noise_ratio, structural_similarity
+
 
 class BaseTrainer(ABC):
     config: DictConfig
@@ -27,28 +27,56 @@ class BaseTrainer(ABC):
     camera_calib: BaseCameraCalib
     cameras: List[Camera]
     loss_functions: List[BaseLoss]
-    optimizer: Adam 
+    optimizer: Adam
     scheduler: ExponentialLR
     logger: BaseLogger
+    # primitive
+    batch_size: int
+    chunk: int
+    epoch_max: int
+    epoch_save_fields: int
+    epoch_test_rendering: int
+    epoch_save_model: int
+    scheduler_lr: float
+    optimizer_lr: float
+    optimizer_weight_decay: float
 
     def __init__(
         self,
-        config: DictConfig,
+        global_config: DictConfig,
+        device: str = "cuda:0",
+        batch_size: int = 1024,
+        chunk: int = 1024,
+        epoch_max: int = 2000,
+        epoch_save_fields: int = 2,
+        epoch_test_rendering: int = 10,
+        epoch_save_model: int = 100,
+        scheduler_lr: float = 0.99815,
+        optimizer_lr: float = 0.0005,
+        optimizer_weight_decay: float = 0.0,
     ) -> None:
         super().__init__()
         # Keep Hydra config data
-        self.config = config
+        self.config = global_config
         # Configure torch device (cpu or cuda)
-        self.device = torch.device(self.config.trainer.device)
-        # Setup Dataset 
-        self.dataset = hydra.utils.instantiate(
-            self.config.dataset
-        )
+        self.device = torch.device(device)
+        # Setup primitive parameters
+        self.batch_size = batch_size
+        self.chunk = chunk
+        self.epoch_max = epoch_max
+        self.epoch_save_fields = epoch_save_fields
+        self.epoch_test_rendering = epoch_test_rendering
+        self.epoch_save_model = epoch_save_model
+        self.scheduler_lr = scheduler_lr
+        self.optimizer_lr = optimizer_lr
+        self.optimizer_weight_decay = optimizer_weight_decay
+        # Setup Dataset
+        self.dataset = hydra.utils.instantiate(self.config.dataset)
         # Setup Cameras
         frame_length = len(self.dataset)
-        self.camera_calib = PinholeCalib(
-            self.dataset[0]["camera_calib_params"]
-        ).to(self.device)
+        self.camera_calib = PinholeCalib(self.dataset[0]["camera_calib_params"]).to(
+            self.device
+        )
         self.cameras = [
             Camera(self.camera_calib, self.dataset[camera_id]["camera_params"]).to(
                 self.device
@@ -76,7 +104,7 @@ class BaseTrainer(ABC):
 
         # render images with target_types "color" and "depth"
         images = self.neural_render.render_image(
-            w, h, camera, target_types, downsampling, self.config.trainer.chunk
+            w, h, camera, target_types, downsampling, self.chunk
         )
         rgb_np = (
             torch.clamp(images["color"] * 255, 0, 255)
@@ -125,11 +153,7 @@ class BaseTrainer(ABC):
             cv2.imwrite(str(write_path), images[key])
 
     def construct_ground_truth(
-        self,
-        camera_id: int,
-        us_int: Tensor,
-        vs_int: Tensor,
-        loss_types: List[str]
+        self, camera_id: int, us_int: Tensor, vs_int: Tensor, loss_types: List[str]
     ) -> Dict[str, Tensor]:
         targets: Dict[str, Tensor] = {}
         if "ColorLoss" in loss_types:
@@ -155,7 +179,7 @@ class BaseTrainer(ABC):
 
         if "RangeLoss" in loss_types:
             targets["range_penalty"] = torch.zeros(us_int.shape, dtype=torch.float32)
-        
+
         return targets
 
     @abstractmethod
