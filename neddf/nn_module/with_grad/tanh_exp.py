@@ -1,16 +1,17 @@
 from typing import Optional, Tuple
+
 import torch
-from torch import nn, Tensor
+from torch import Tensor
 
 
 class TanhExpGradFunction(torch.autograd.Function):
     @staticmethod
-    def forward(
+    def forward(  # type: ignore
         ctx: torch.autograd.function._ContextMethodMixin,
         x: Tensor,
         J: Tensor,
         threshold: float = 20.0,
-    ):
+    ) -> Tuple[Tensor, Tensor]:
         """forward
 
         Forward calculation for TanhExpGradFunction.
@@ -28,21 +29,21 @@ class TanhExpGradFunction(torch.autograd.Function):
 
         dydx = tx - x * ex * (tx ** 2 - 1)
         dydx[mask] = 1.0
-        
-        dGdJ = dydx.unsqueeze(1).expand_as(J) 
+
+        dGdJ = dydx.unsqueeze(1).expand_as(J)
         G = dGdJ * J
 
         d2x = ex * (-x + 2 * ex * x * tx - 2) * (tx ** 2 - 1)
         d2x[mask] = 0.0
-        ctx.save_for_backward(d2x, J, dydx, dGdJ, mask)
+        ctx.save_for_backward(d2x, J, dydx, dGdJ, mask)  # type: ignore
         return y, G
 
     @staticmethod
-    def backward(
+    def backward(  # type: ignore
         ctx,
         dLdy: Tensor,
         dLdG: Tensor,
-    ):
+    ) -> Tuple[Tensor, Tensor, Optional[Tensor]]:
         """backward
 
         Backward calculation for LinearGradFunction.
@@ -51,11 +52,11 @@ class TanhExpGradFunction(torch.autograd.Function):
             ctx (_ContextMethodMixin): ctx for keep values used in backward
             dLdy (Tensor[batch_size, output_ch, float]): output features
             dLdG (Tensor[batch_size, 3, output_ch, float]): gradients of output features
-        
+
         Contexts:
             mask (Tensor[batch_size, input_ch, bool])
         """
-        d2x, J, dydx, dGdJ, mask = ctx.saved_tensors
+        d2x, J, dydx, dGdJ, mask = ctx.saved_tensors  # type: ignore
         dGdx = d2x * torch.sum(J * dLdG, 2)
         dLdx = dLdy * dydx + dGdx
         dLdJ = dLdG * dGdJ

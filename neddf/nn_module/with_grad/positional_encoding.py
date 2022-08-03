@@ -1,6 +1,7 @@
 from typing import Optional, Tuple
+
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 
 class PositionalEncodingGradLayer(nn.Module):
@@ -24,7 +25,9 @@ class PositionalEncodingGradLayer(nn.Module):
         # scale of each datasets, this implementation use (2.0**t)
         self.freq: Tensor = torch.tensor([(2.0 ** t) for t in range(self.embed_dim)])
 
-    def forward(self, x: Tensor, J: Tensor, scale: Optional[Tensor] = None) -> Tensor:
+    def forward(
+        self, x: Tensor, J: Tensor, scale: Optional[Tensor] = None
+    ) -> Tuple[Tensor, Tensor]:
         """Forward
 
         This method calculate positional encoding of input positions and their gradients.
@@ -56,13 +59,24 @@ class PositionalEncodingGradLayer(nn.Module):
         p: Tensor = torch.matmul(freq, x.reshape(batch_size, 1, input_dim)).reshape(
             batch_size, self.embed_dim * input_dim
         )
-        pG = J.unsqueeze(2).expand(-1, -1, self.embed_dim, -1).reshape(batch_size, input_dim, self.embed_dim * input_dim)
-        
+        pG = (
+            J.unsqueeze(2)
+            .expand(-1, -1, self.embed_dim, -1)
+            .reshape(batch_size, input_dim, self.embed_dim * input_dim)
+        )
+
         scale_y = scale.expand_as(p).to(x.device)
-        scale_G = freq.unsqueeze(0).expand(input_dim, -1, input_dim).reshape(1, input_dim, -1) * scale_y.unsqueeze(1) * pG
+        scale_G = (
+            freq.unsqueeze(0).expand(input_dim, -1, input_dim).reshape(1, input_dim, -1)
+            * scale_y.unsqueeze(1)
+            * pG
+        )
 
         y = torch.cat([scale_y * torch.sin(p), scale_y * torch.cos(p)], 1)
-        G = torch.cat([scale_G * torch.cos(p).unsqueeze(1), -scale_G * torch.sin(p).unsqueeze(1)], 2)
+        G = torch.cat(
+            [scale_G * torch.cos(p).unsqueeze(1), -scale_G * torch.sin(p).unsqueeze(1)],
+            2,
+        )
         return y, G
 
     def withoutGrad(self, x: Tensor, scale: Optional[Tensor] = None) -> Tensor:

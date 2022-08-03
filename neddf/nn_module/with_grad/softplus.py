@@ -1,16 +1,17 @@
 from typing import Optional, Tuple
+
 import torch
-from torch import nn, Tensor
+from torch import Tensor
 
 
 class SoftplusGradFunction(torch.autograd.Function):
     @staticmethod
-    def forward(
+    def forward(  # type: ignore
         ctx: torch.autograd.function._ContextMethodMixin,
         x: Tensor,
         J: Tensor,
         threshold: float = 20.0,
-    ):
+    ) -> Tuple[Tensor, Tensor]:
         """forward
 
         Forward calculation for SoftplusGradFunction.
@@ -33,15 +34,15 @@ class SoftplusGradFunction(torch.autograd.Function):
         dGdJ = dydx.unsqueeze(1).expand_as(J)
         G = dGdJ * J
 
-        ctx.save_for_backward(J, dydx, dGdJ, mask)
+        ctx.save_for_backward(J, dydx, dGdJ, mask)  # type: ignore
         return y, G
 
     @staticmethod
-    def backward(
+    def backward(  # type: ignore
         ctx,
         dLdy: Tensor,
         dLdG: Tensor,
-    ):
+    ) -> Tuple[Tensor, Tensor, Optional[Tensor]]:
         """backward
 
         Backward calculation for LinearGradFunction.
@@ -50,11 +51,11 @@ class SoftplusGradFunction(torch.autograd.Function):
             ctx (_ContextMethodMixin): ctx for keep values used in backward
             dLdy (Tensor[batch_size, output_ch, float]): output features
             dLdG (Tensor[batch_size, 3, output_ch, float]): gradients of output features
-        
+
         Contexts:
             mask (Tensor[batch_size, input_ch, bool])
         """
-        J, dydx, dGdJ, mask = ctx.saved_tensors
+        J, dydx, dGdJ, mask = ctx.saved_tensors  # type: ignore
         d2x = (1 - dydx) * dydx
         d2x[mask] = 0.0
         dGdx = d2x * torch.sum(J * dLdG, 2)
