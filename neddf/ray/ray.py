@@ -113,7 +113,9 @@ class Ray:
             batch_size, sample_count, 3
         )
         dists_near = dists
-        dists_far = torch.cat([dists[:, 1:], dists[:, -1:]], dim=1)
+        dists_far = torch.cat(
+            [dists[:, 1:], 2 * dists[:, -1:] - dists[:, -2:-1]], dim=1
+        )
         d_mu = 0.5 * (dists_near + dists_far)
         d_sigma = 0.5 * (dists_far - dists_near)
         d_mu2 = torch.square(d_mu)

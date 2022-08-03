@@ -180,7 +180,7 @@ class NeDDF(BaseNeuralField):
 
         hx = torch.cat([embed_pos, embed_dir, distance_grad, features], dim=1)
         for layer in self.layers_col:
-            hx = relu(layer(hx))
+            hx = self.activation(layer(hx))
         color: Tensor = hx
 
         output_dict: Dict[str, Tensor] = {
@@ -252,7 +252,7 @@ class NeDDF(BaseNeuralField):
 
             hx = torch.cat([embed_pos, embed_dir, distance_grad, features], dim=1)
             for layer in self.layers_col:
-                hx = relu(layer(hx))
+                hx = self.activation(layer(hx))
             color: Tensor = hx
 
             output_dict: Dict[str, Tensor] = {

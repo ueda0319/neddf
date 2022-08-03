@@ -7,5 +7,5 @@ epoch_save_fields: 2
 epoch_test_rendering: 10
 epoch_save_model: 100
 scheduler_lr: 0.99815
-optimizer_lr: 0.0001
-optimizer_weight_decay: 0.0
+optimizer_lr: 0.001
+optimizer_weight_decay: 0.0001
