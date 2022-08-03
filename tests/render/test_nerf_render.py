@@ -7,14 +7,13 @@ from neddf.render import NeRFRender
 
 
 class TestNeRFRender:
-    def test_nerf_render_constructor(self, nerf_fixture):
+    def test_nerf_render_constructor(self, nerf_config_fixture):
         # test construct of nerf_render
         NeRFRender(
-            network_coarse=nerf_fixture,
-            network_fine=nerf_fixture,
+            network_config=nerf_config_fixture,
         )
 
-    def test_integrate_volume_render(self, nerf_fixture):
+    def test_integrate_volume_render(self, nerf_config_fixture):
         # test data
         batch_size: Final[int] = 32
         sampling_count: Final[int] = 64
@@ -29,8 +28,7 @@ class TestNeRFRender:
         # make nerf render instance
         # TODO: add other networks list and test them
         neural_render: NeRFRender = NeRFRender(
-            network_coarse=nerf_fixture,
-            network_fine=nerf_fixture,
+            network_config=nerf_config_fixture,
         )
 
         render_result: Dict[str, Tensor] = neural_render.integrate_volume_render(
@@ -47,7 +45,7 @@ class TestNeRFRender:
         assert render_result["color"].shape == (batch_size, 3)
         assert render_result["transmittance"].shape == (batch_size,)
 
-    def test_render_rays(self, camera_fixture, nerf_fixture):
+    def test_render_rays(self, camera_fixture, nerf_config_fixture):
         # test data: 2D positions in uv
         batch_size: Final[int] = 32
         us: Tensor = torch.linspace(0, 480, batch_size, dtype=torch.float32)
@@ -57,8 +55,7 @@ class TestNeRFRender:
         # make nerf render instance
         # TODO: add other networks list and test them
         neural_render: NeRFRender = NeRFRender(
-            network_coarse=nerf_fixture,
-            network_fine=nerf_fixture,
+            network_config=nerf_config_fixture,
         )
         render_result: Dict[str, Tensor] = neural_render.render_rays(uv, camera_fixture)
         # check that the result dict have collect keys

@@ -1,2 +1,2 @@
-from neddf.render.base_neural_render import BaseNeuralRender  # noqa
-from neddf.render.nerf_render import NeRFRender, RenderTarget  # noqa
+from neddf.render.base_neural_render import BaseNeuralRender, RenderTarget  # noqa
+from neddf.render.nerf_render import NeRFRender  # noqa

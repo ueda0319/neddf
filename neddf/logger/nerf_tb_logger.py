@@ -3,10 +3,10 @@ from typing import Dict
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from .nerf_logger_abstract import NeRFLoggerAbstract
+from .base_logger import BaseLogger
 
 
-class NeRFTBLogger(NeRFLoggerAbstract):
+class NeRFTBLogger(BaseLogger):
     """Logger using TensorBoard."""
 
     def __init__(self) -> None:

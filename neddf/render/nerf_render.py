@@ -1,88 +1,59 @@
+import math
 from typing import Any, Dict, Final, Iterable, List, Literal
 
 import cv2
+import hydra
 import numpy as np
 import torch
 from neddf.camera import Camera
 from neddf.network import BaseNeuralField
-from neddf.render.base_neural_render import BaseNeuralRender
+from neddf.ray import Ray, Sampling
+from neddf.render.base_neural_render import BaseNeuralRender, RenderTarget
 from numpy import ndarray
+from omegaconf import DictConfig
 from torch import Tensor
-from torch.nn.functional import relu
 from tqdm import tqdm
 
-RenderTarget = Literal["color", "depth", "transmittance"]
+SamplingType = Literal["point", "cone"]
 
 
 class NeRFRender(BaseNeuralRender):
     def __init__(
         self,
-        network_coarse: BaseNeuralField,
-        network_fine: BaseNeuralField,
+        network_config: DictConfig,
         sample_coarse: int = 128,
         sample_fine: int = 128,
         dist_near: float = 2.0,
         dist_far: float = 6.0,
         max_dist: float = 6.0,
+        use_coarse_network: bool = True,
+        sampling_type: SamplingType = "point",
     ) -> None:
         super().__init__()
-        self.network_coarse: BaseNeuralField = network_coarse
-        self.network_fine: BaseNeuralField = network_fine
+        self.use_coarse_network: bool = use_coarse_network
+        self.network_fine: BaseNeuralField = hydra.utils.instantiate(
+            network_config,
+        )
+        if use_coarse_network:
+            self.network_coarse: BaseNeuralField = hydra.utils.instantiate(
+                network_config,
+            )
+        else:
+            self.network_coarse = self.network_fine
         self.sample_coarse: Final[int] = sample_coarse
         self.sample_fine: Final[int] = sample_fine
         self.dist_near: Final[float] = dist_near
         self.dist_far: Final[float] = dist_far
         self.max_dist: Final[float] = max_dist
+        self.sampling_type: SamplingType = sampling_type
 
     def get_parameters_list(self) -> List[Any]:
-        return list(self.network_coarse.parameters()) + list(
-            self.network_fine.parameters()
-        )
-
-    def integrate_volume_render(
-        self,
-        dists: Tensor,
-        densities: Tensor,
-        colors: Tensor,
-    ) -> Dict[str, Tensor]:
-        batch_size: Final[int] = dists.shape[0]
-        sampling_step: Final[int] = dists.shape[1]
-
-        device: Final[torch.device] = dists.device
-        deltas = dists[:, 1:] - dists[:, :-1]
-
-        o = 1 - torch.exp(-relu(densities[:, :-1]) * deltas)
-        t = torch.cumprod(
-            torch.cat([torch.ones((o.shape[0], 1)).to(device), 1.0 - o + 1e-7], 1), 1
-        )
-        w = o * t[:, :-1]
-        assert not torch.any(torch.isnan(w))
-
-        dh = w * dists[:, :-1]
-        ih = w.reshape(batch_size, -1, 1).expand(batch_size, -1, 3) * colors[:, :-1, :]
-        d = torch.sum(dh, dim=1)
-        i = torch.sum(ih, dim=1)
-        dv = torch.sum(
-            w
-            * torch.square(
-                dists[:, :-1]
-                - d.reshape(batch_size, 1).expand(batch_size, sampling_step - 1)
-            ),
-            dim=1,
-        )
-
-        # Black background
-        d += t[:, -1] * self.max_dist
-
-        # TODO: Make dataclass for volumerender result after append other neuralrender models
-        result = {
-            "weight": w,
-            "depth": d,
-            "depth_var": dv,
-            "color": i,
-            "transmittance": t[:, -1],
-        }
-        return result
+        if self.use_coarse_network:
+            return list(self.network_coarse.parameters()) + list(
+                self.network_fine.parameters()
+            )
+        else:
+            return list(self.network_coarse.parameters())
 
     def render_rays(
         self,
@@ -92,7 +63,7 @@ class NeRFRender(BaseNeuralRender):
         batch_size = uv.shape[0]
         device = uv.device
 
-        rays = camera.create_rays(uv)
+        rays: Ray = camera.create_rays(uv)
 
         # sample distances linearly for coarse sampling
         dists_coarse: Tensor = (
@@ -105,11 +76,13 @@ class NeRFRender(BaseNeuralRender):
             * ((self.dist_far - self.dist_near) / (self.sample_coarse))
         )
         delta_coarse: Tensor = dists_coarse[:, 1:] - dists_coarse[:, :-1]
-        samples_coarse: Dict[str, Tensor] = rays.get_sampling_points(dists_coarse)
-        values_coarse: Dict[str, Tensor] = self.network_coarse(
-            samples_coarse["sample_pos"],
-            samples_coarse["sample_dir"],
-        )
+        if self.sampling_type == "point":
+            samples_coarse: Sampling = rays.get_sampling_points(dists_coarse)
+        elif self.sampling_type == "cone":
+            # use 1111 for view angle = 0.6911112070083618(rad)
+            ray_radius: float = 1.0 / 1111 / math.sqrt(12)
+            samples_coarse = rays.get_sampling_cones(dists_coarse, ray_radius)
+        values_coarse: Dict[str, Tensor] = self.network_coarse(samples_coarse)
         integrate_coarse: Dict[str, Tensor] = self.integrate_volume_render(
             dists=dists_coarse,
             densities=values_coarse["density"],
@@ -130,11 +103,11 @@ class NeRFRender(BaseNeuralRender):
                 self.sample_fine + 1,
             )
         delta_fine: Tensor = dists_fine[:, 1:] - dists_fine[:, :-1]
-        samples_fine: Dict[str, Tensor] = rays.get_sampling_points(dists_fine)
-        values_fine: Dict[str, Tensor] = self.network_fine(
-            samples_fine["sample_pos"],
-            samples_fine["sample_dir"],
-        )
+        if self.sampling_type == "point":
+            samples_fine: Sampling = rays.get_sampling_points(dists_fine)
+        elif self.sampling_type == "cone":
+            samples_fine = rays.get_sampling_cones(dists_fine, ray_radius)
+        values_fine: Dict[str, Tensor] = self.network_fine(samples_fine)
         integrate: Dict[str, Tensor] = self.integrate_volume_render(
             dists=dists_fine,
             densities=values_fine["density"],
@@ -227,7 +200,7 @@ class NeRFRender(BaseNeuralRender):
     def render_field_slice(
         self,
         device: torch.device,
-        slice_y: float = 0.0,
+        slice_t: float = 0.0,
         render_size: float = 1.1,
         render_resolution: int = 128,
     ) -> Dict[str, ndarray]:
@@ -244,15 +217,21 @@ class NeRFRender(BaseNeuralRender):
                 .reshape(render_resolution, 1)
                 .expand(render_resolution, render_resolution)
             )
-            zs = torch.zeros(render_resolution, render_resolution).to(device) + slice_y
+            zs = torch.zeros(render_resolution, render_resolution).to(device) + slice_t
 
             sample_pos = torch.cat(
                 [xs[:, :, None], ys[:, :, None], zs[:, :, None]], dim=2
             )
             sample_dir = torch.zeros(render_resolution, render_resolution, 3).to(device)
             sample_dir[:, :, 2] = 1.0
+            diag_variance = torch.zeros_like(sample_pos)
+            sampling: Sampling = Sampling(
+                sample_pos,
+                sample_dir,
+                diag_variance,
+            )
             self.network_fine.train(False)
-            values: Dict[str, Tensor] = self.network_fine(sample_pos, sample_dir)
+            values: Dict[str, Tensor] = self.network_fine(sampling)
             self.network_fine.train(True)
             fields: Dict[str, ndarray] = {}
             scales: Dict[str, float] = {

@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 from numpy import ndarray
+from omegaconf import OmegaConf
 
 from neddf.camera import Camera, PinholeCalib
 from neddf.network import NeDDF, NeRF, NeuS
@@ -30,6 +31,18 @@ def camera_fixture():
     camera: Camera = Camera(camera_calib, camera_param)
     return camera
 
+@pytest.fixture
+def nerf_config_fixture():
+    nerf_config = {
+        "_target_": "neddf.network.NeRF",
+        "embed_pos_rank": 10,
+        "embed_dir_rank": 4,
+        "layer_count": 8,
+        "layer_width": 256,
+        "activation_type": "ReLU",
+        "skips": [4],
+    }
+    return OmegaConf.create(nerf_config)
 
 @pytest.fixture
 def nerf_fixture():
@@ -78,24 +91,18 @@ def neddf_fixture():
 
 @pytest.fixture
 def nerf_render_fixture():
-    network_coarse: NeRF = NeRF(
-        embed_pos_rank=10,
-        embed_dir_rank=4,
-        layer_count=8,
-        layer_width=256,
-        activation_type="ReLU",
-        skips=[4],
-    )
-    network_fine: NeRF = NeRF(
-        embed_pos_rank=10,
-        embed_dir_rank=4,
-        layer_count=8,
-        layer_width=256,
-        activation_type="ReLU",
-        skips=[4],
-    )
+    nerf_config = {
+        "_target_": "neddf.network.NeRF",
+        "embed_pos_rank": 10,
+        "embed_dir_rank": 4,
+        "layer_count": 8,
+        "layer_width": 256,
+        "activation_type": "ReLU",
+        "skips": [4],
+    }
+    nerf_config_omega =  OmegaConf.create(nerf_config)
     neural_render: NeRFRender = NeRFRender(
-        network_coarse=network_coarse,
-        network_fine=network_fine,
+        network_config=nerf_config_omega,
+        _recursive_=False,
     )
     return neural_render

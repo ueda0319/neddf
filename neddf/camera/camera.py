@@ -3,7 +3,7 @@ from typing import Final, Optional
 import numpy as np
 import torch
 from neddf.camera.base_camera_calib import BaseCameraCalib
-from neddf.camera.ray import Ray
+from neddf.ray import Ray
 from numpy import ndarray
 from scipy.spatial.transform import Rotation
 from torch import Tensor, nn

@@ -2,7 +2,8 @@ from typing import Callable, Dict, Final, List, Optional
 
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
-from neddf.nn_module import PositionalEncoding, ScaledPositionalEncoding, tanhExp
+from neddf.nn_module import PositionalEncoding, tanhExp
+from neddf.ray import Sampling
 from torch import Tensor, nn, sigmoid
 from torch.nn.functional import relu, softplus
 
@@ -19,7 +20,6 @@ class NeDDF(BaseNeuralField):
         activation_type: str = "tanhExp",
         d_near: float = 0.01,
         skips: Optional[List[int]] = None,
-        is_coarse: bool = False,
     ) -> None:
         """Initializer
 
@@ -35,8 +35,6 @@ class NeDDF(BaseNeuralField):
 
         """
         super().__init__()
-        if is_coarse:
-            embed_pos_rank -= 3
         # calculate mlp input dimensions after positional encoding
         input_ddf_dim: Final[int] = embed_pos_rank * 6
         input_col_dim: Final[int] = (
@@ -56,9 +54,6 @@ class NeDDF(BaseNeuralField):
         self.activation: Callable[[Tensor], Tensor] = activation_types[activation_type]
 
         # create positional encoding layers
-        self.pe_pos_scaled: ScaledPositionalEncoding = ScaledPositionalEncoding(
-            embed_pos_rank
-        )
         self.pe_pos: PositionalEncoding = PositionalEncoding(embed_pos_rank)
         self.pe_dir: PositionalEncoding = PositionalEncoding(embed_dir_rank)
 
@@ -86,48 +81,43 @@ class NeDDF(BaseNeuralField):
 
     def forward(
         self,
-        input_pos: Tensor,
-        input_dir: Tensor,
+        sampling: Sampling,
     ) -> Dict[str, Tensor]:
         """Forward propagation
 
         This method take radiance field (density + color) with standard MLP.
 
         Args:
-            input_pos (Tensor[batch_size, sampling, 3, float32]):
-                input point positions
-                If you need to use PE, please enter the tensor you have already applied PE.
-            input_dir (Tensor[batch_size, 3, float32]):
-                input point positions
-                If you need to use PE, please enter the tensor you have already applied PE.
+            sampling (Sampling[batch_size, sampling, 3])
 
         Returns:
             Dict[str, Tensor]{
                 'density' (Tensor[batch_size, 1, float32]): density of each input
                 'color' (Tensor[batch_size, 3, float32]): rgb color of each input
             }
-
-        Notes:
-            Apply range limit function in volume rendering step
-                (original paper use relu for density, sigmoid for color)
-            In original paper, final hidden layer use no activation, but
-                original implementation use activation.
-                Since a hidden layer without activation does not increase the
-                amount of information (ideally), this implementation uses activation.
-            In original paper, dir_feature take one additional dense layer without activation,
-                but our implementation remove it since
-                (since it is possible to create M3 that reproduces M2 [M1 x, d] with M3[x, d])
-
         """
         if not self.training:
-            return self.forward_eval(input_pos, input_dir)
-        batch_size: Final[int] = input_pos.shape[0]
-        sampling: Final[int] = input_pos.shape[1]
+            return self.forward_eval(sampling)
+        batch_size: Final[int] = sampling.sample_pos.shape[0]
+        sampling_size: Final[int] = sampling.sample_pos.shape[1]
+        device: torch.device = sampling.sample_pos.device
 
-        input_pos.requires_grad_(True)
-        embed_pos_scaled: Tensor = self.pe_pos_scaled(input_pos.reshape(-1, 3))
-        embed_pos: Tensor = self.pe_pos(input_pos.reshape(-1, 3))
-        embed_dir: Tensor = self.pe_dir(input_dir.reshape(-1, 3))
+        sampling.sample_pos.requires_grad_(True)
+        # scale PE with distance field to graditent becale same scale
+        pe_pos_scale: Tensor = (
+            torch.reciprocal(self.pe_pos.freq)
+            .to(device)[None, :, None]
+            .expand(batch_size * sampling_size, -1, 3)
+            .reshape(batch_size * sampling_size, -1)
+        )
+        # get weight of PE from sampling size
+        pe_weights = sampling.get_pe_weights(self.pe_pos.freq).to(device)
+        embed_pos_scaled: Tensor = self.pe_pos(
+            sampling.sample_pos.reshape(-1, 3),
+            pe_pos_scale * pe_weights,
+        )
+        embed_pos: Tensor = self.pe_pos(sampling.sample_pos.reshape(-1, 3), pe_weights)
+        embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
         hx: Tensor = embed_pos_scaled
         for layer_id, layer in enumerate(self.layers_ddf):
@@ -138,13 +128,11 @@ class NeDDF(BaseNeuralField):
         aux_grad: Tensor = self.aux_grad_scale * sigmoid(hx[:, 1:2])
         features: Tensor = hx
 
-        d_output = torch.ones_like(
-            distance, requires_grad=False, device=distance.device
-        )
+        d_output = torch.ones_like(distance, requires_grad=False, device=device)
         # gradients of distance field take normal vector
         distance_grad = torch.autograd.grad(
             outputs=distance,
-            inputs=input_pos,
+            inputs=sampling.sample_pos,
             grad_outputs=d_output,
             create_graph=True,
             retain_graph=True,
@@ -152,7 +140,7 @@ class NeDDF(BaseNeuralField):
         )[0].reshape(-1, 3)
         aux_gg = torch.autograd.grad(
             outputs=aux_grad,
-            inputs=input_pos,
+            inputs=sampling.sample_pos,
             grad_outputs=d_output,
             create_graph=True,
             retain_graph=True,
@@ -182,7 +170,7 @@ class NeDDF(BaseNeuralField):
         s_penalty_dDdt = torch.square(relu(-1.0 + dDdt))
         # -4.0 < (distance before softplus) < 2.0
         s_penalty_distance = torch.square(
-            relu(-4.0 - hx[:, :1]) + relu(-2.0 + hx[:, :1])
+            relu(-4.0 - hx[:, :1]) + relu(-4.0 + hx[:, :1])
         )
         # -4.0 < (aux_grad before softplus) < 4.0
         s_penalty_aux_grad = torch.square(
@@ -192,33 +180,47 @@ class NeDDF(BaseNeuralField):
 
         hx = torch.cat([embed_pos, embed_dir, distance_grad, features], dim=1)
         for layer in self.layers_col:
-            hx = relu(layer(hx))
+            hx = self.activation(layer(hx))
         color: Tensor = hx
 
         output_dict: Dict[str, Tensor] = {
-            "distance": distance.reshape(batch_size, sampling),
-            "density": density.reshape(batch_size, sampling),
-            "color": color.reshape(batch_size, sampling, 3),
-            "aux_grad_penalty": ag_penalty.reshape(batch_size, sampling),
-            "range_penalty": s_penalty.reshape(batch_size, sampling),
-            "aux_grad": aux_grad.reshape(batch_size, sampling),
+            "distance": distance.reshape(batch_size, sampling_size),
+            "density": density.reshape(batch_size, sampling_size),
+            "color": color.reshape(batch_size, sampling_size, 3),
+            "aux_grad_penalty": ag_penalty.reshape(batch_size, sampling_size),
+            "range_penalty": s_penalty.reshape(batch_size, sampling_size),
+            "aux_grad": aux_grad.reshape(batch_size, sampling_size),
         }
         return output_dict
 
     def forward_eval(
         self,
-        input_pos: Tensor,
-        input_dir: Tensor,
+        sampling: Sampling,
     ) -> Dict[str, Tensor]:
-        batch_size: Final[int] = input_pos.shape[0]
-        sampling: Final[int] = input_pos.shape[1]
+        batch_size: Final[int] = sampling.sample_pos.shape[0]
+        sampling_size: Final[int] = sampling.sample_pos.shape[1]
+        device: torch.device = sampling.sample_pos.device
 
         with torch.set_grad_enabled(True):
 
-            input_pos.requires_grad_(True)
-            embed_pos_scaled: Tensor = self.pe_pos_scaled(input_pos.reshape(-1, 3))
-            embed_pos: Tensor = self.pe_pos(input_pos.reshape(-1, 3))
-            embed_dir: Tensor = self.pe_dir(input_dir.reshape(-1, 3))
+            sampling.sample_pos.requires_grad_(True)
+            # scale PE with distance field to graditent becale same scale
+            pe_pos_scale: Tensor = (
+                torch.reciprocal(self.pe_pos.freq)
+                .to(device)[None, :, None]
+                .expand(batch_size * sampling_size, -1, 3)
+                .reshape(batch_size * sampling_size, -1)
+            )
+            # get weight of PE from sampling size
+            pe_weights = sampling.get_pe_weights(self.pe_pos.freq).to(device)
+            embed_pos_scaled: Tensor = self.pe_pos(
+                sampling.sample_pos.reshape(-1, 3),
+                pe_pos_scale * pe_weights,
+            )
+            embed_pos: Tensor = self.pe_pos(
+                sampling.sample_pos.reshape(-1, 3), pe_weights
+            )
+            embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
             hx: Tensor = embed_pos_scaled
             for layer_id, layer in enumerate(self.layers_ddf):
@@ -229,13 +231,11 @@ class NeDDF(BaseNeuralField):
             aux_grad: Tensor = self.aux_grad_scale * sigmoid(hx[:, 1:2])
             features: Tensor = hx
 
-            d_output = torch.ones_like(
-                distance, requires_grad=False, device=distance.device
-            )
+            d_output = torch.ones_like(distance, requires_grad=False, device=device)
             # gradients of distance field take normal vector
             distance_grad = torch.autograd.grad(
                 outputs=distance,
-                inputs=input_pos,
+                inputs=sampling.sample_pos,
                 grad_outputs=d_output,
                 create_graph=True,
                 retain_graph=True,
@@ -252,14 +252,14 @@ class NeDDF(BaseNeuralField):
 
             hx = torch.cat([embed_pos, embed_dir, distance_grad, features], dim=1)
             for layer in self.layers_col:
-                hx = relu(layer(hx))
+                hx = self.activation(layer(hx))
             color: Tensor = hx
 
             output_dict: Dict[str, Tensor] = {
-                "distance": distance.reshape(batch_size, sampling),
-                "density": density.reshape(batch_size, sampling),
-                "color": color.reshape(batch_size, sampling, 3),
-                "aux_grad": aux_grad.reshape(batch_size, sampling),
+                "distance": distance.reshape(batch_size, sampling_size),
+                "density": density.reshape(batch_size, sampling_size),
+                "color": color.reshape(batch_size, sampling_size, 3),
+                "aux_grad": aux_grad.reshape(batch_size, sampling_size),
             }
         return output_dict
 

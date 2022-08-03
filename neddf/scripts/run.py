@@ -6,7 +6,7 @@ from typing import Final
 import hydra
 import numpy as np
 import torch
-from neddf.trainer import NeRFTrainer
+from neddf.trainer import BaseTrainer
 from omegaconf import DictConfig
 
 
@@ -14,7 +14,11 @@ from omegaconf import DictConfig
 def main(cfg: DictConfig) -> None:
     cwd: Final[Path] = Path(hydra.utils.get_original_cwd())
     cfg.dataset.dataset_dir = str(cwd / cfg.dataset.dataset_dir)
-    trainer: NeRFTrainer = NeRFTrainer(cfg)
+    trainer: BaseTrainer = hydra.utils.instantiate(
+        cfg.trainer,
+        global_config=cfg,
+        _recursive_=False,
+    )
     trainer.run_train()
 
 
