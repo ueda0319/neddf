@@ -3,7 +3,6 @@ from typing import Callable, Dict, Final, List, Optional
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
 from neddf.nn_module import PositionalEncoding, tanhExp
-from neddf.nn_module.with_grad import LinearGradLayer, PositionalEncodingGradLayer, ReLUGradFunction, SoftplusGradFunction, TanhExpGradFunction
 from neddf.ray import Sampling
 from torch import Tensor, nn, sigmoid
 from torch.nn.functional import relu, softplus
