@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  core:
+    build:
+      args:
+        - BASE_IMAGE=ubuntu:20.04
+        - PYTHON_VERSION=3.8
+      context: ../../
+      dockerfile: environments/Dockerfile
+    user: 1000:1000
+    tty: true
+    volumes:
+        - ../../:/home/challenger/neddf
+        - ../files_override/mpu/poetry.lock:/home/challenger/neddf/poetry.lock
+        - ../files_override/mpu/pyproject.toml:/home/challenger/neddf/pyproject.toml
+    ports:
+        - 8000:8000
