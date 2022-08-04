@@ -28,5 +28,18 @@ class ColorLoss(BaseLoss):
         )
 
     def loss(self, output: Tensor, target: Tensor) -> Tensor:
+        """loss
+
+        This method calculate loss in each tensor
+        BaseLoss.forward call this method two times(coarse and fine) in a iterration
+        Note that output and target should take same shape
+
+        Args:
+            output (Tensor): output values or rendered value in neuralfields
+            target (Tensor): target values, which always take ground truth
+
+        Returns:
+            Tensor[1, float]: calcurated loss value
+        """
         res = torch.mean(torch.square(output - target))
         return res

@@ -24,11 +24,6 @@ pytest-mock = "^3.8.2"
 [tool.poetry.group.dev.dependencies]
 pysen = {version = "0.10.2", extras = ["lint"]}
 
-[[tool.poetry.source]]
-name = "pytorch-cu111"
-url = "https://download.pytorch.org/whl/cu111/"
-secondary = true
-
 [tool.pysen]
 version = "0.10"
 
