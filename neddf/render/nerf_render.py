@@ -194,6 +194,7 @@ class NeRFRender(BaseNeuralRender):
         Args:
             iter (int): current iteration. Set -1 for evaluation.
         """
+        super().set_iter(iter)
         self.network_coarse.set_iter(iter)
         self.network_fine.set_iter(iter)
 

@@ -27,6 +27,7 @@ class NeDDF(BaseNeuralField):
         col_layer_width: int = 256,
         activation_type: str = "tanhExp",
         d_near: float = 0.01,
+        lowpass_alpha_offset: float = 10.0,
         skips: Optional[List[int]] = None,
         penalty_weight: Optional[Dict[str, float]] = None,
     ) -> None:
@@ -40,6 +41,8 @@ class NeDDF(BaseNeuralField):
             layer_count (int): count of layers
             layer_width (int): dimension of hidden layers
             activation_type (str): activation function
+            lowpass_alpha_init (float): offset of progressive training in lowpass
+                Set lowpass_alpha_offset=embed_pos_rank to disable.
             skips (List[int]): skip connection layer index start with 0
 
         """
@@ -96,6 +99,8 @@ class NeDDF(BaseNeuralField):
 
         self.d_near: float = d_near
         self.aux_grad_scale: float = 1.0
+        self.lowpass_alpha_offset: float = lowpass_alpha_offset
+        self.lowpass_alpha: float = lowpass_alpha_offset
         if penalty_weight is None:
             penalty_weight = {
                 "constraints_aux_grad": 0.05,
@@ -136,20 +141,21 @@ class NeDDF(BaseNeuralField):
             .expand(batch_size * sampling_size, -1, -1)
         )
         # scale PE with distance field to graditent becale same scale
-        pe_pos_scale: Tensor = (
-            torch.reciprocal(2.0 * self.pe_pos.freq)
-            .to(device)[None, :, None]
-            .expand(batch_size * sampling_size, -1, 3)
-            .reshape(batch_size * sampling_size, -1)
-        )
+        pe_grad_scale: Tensor = self.pe_pos_grad.get_grad_scale().to(device)
+        # scale PE with lowpass
+        pe_lowpass_scale: Tensor = self.pe_pos_grad.get_lowpass_scale(
+            self.lowpass_alpha
+        ).to(device)
         # get weight of PE from sampling size
         pe_weights = sampling.get_pe_weights(self.pe_pos.freq).to(device)
         embed_pos_scaled: Tuple[Tensor, Tensor] = self.pe_pos_grad(
             sampling.sample_pos.reshape(-1, 3),
             sample_pos_grad,
-            pe_pos_scale * pe_weights,
+            pe_grad_scale * pe_lowpass_scale * pe_weights,
         )
-        embed_pos: Tensor = self.pe_pos(sampling.sample_pos.reshape(-1, 3), pe_weights)
+        embed_pos: Tensor = self.pe_pos(
+            sampling.sample_pos.reshape(-1, 3), pe_weights * pe_lowpass_scale
+        )
         embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
         hx: Tensor = embed_pos_scaled[0]
@@ -202,13 +208,14 @@ class NeDDF(BaseNeuralField):
         penalties["constraints_dDdt"] = torch.square(relu(-1.0 + dDdt))
 
         # penalty for values which over ranges
-        # -4.0 < (distance before softplus) < 2.0
+        # note that sigmoid(-4.6) and softplus(-4.6) is simillar to 0.01
+        # -4.6 < (distance before softplus) < 1.0
         penalties["range_distance"] = torch.square(
-            relu(-4.0 - ddf_out) + relu(-1.0 + ddf_out)
+            relu(-4.6 - ddf_out) + relu(-1.0 + ddf_out)
         )
-        # -4.0 < (aux_grad before softplus) < 4.0
+        # -4.6 < (aux_grad before softplus) < 4.6
         penalties["range_aux_grad"] = torch.square(
-            relu(-4.0 - aux_out) + relu(-4.0 + aux_out)
+            relu(-4.6 - aux_out) + relu(-4.6 + aux_out)
         )
         # composit penalties
         for key in penalties:
@@ -234,4 +241,5 @@ class NeDDF(BaseNeuralField):
         Args:
             iter (int): current iteration. Set -1 for evaluation.
         """
-        self.aux_grad_scale = min(1.0, 0.01 * iter)
+        self.aux_grad_scale = min(1.0, 0.0001 * iter)
+        self.lowpass_alpha = self.lowpass_alpha_offset + 0.001 * iter

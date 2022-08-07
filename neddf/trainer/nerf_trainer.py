@@ -45,12 +45,13 @@ class NeRFTrainer(BaseTrainer):
         render_dir: Path = Path("render")
 
         frame_length: Final[int] = len(self.dataset)
+        self.neural_render.set_iter(0)
         for epoch in range(0, self.epoch_max + 1):
             print("epoch: ", epoch)
-            self.neural_render.set_iter(epoch)
             camera_ids = np.random.permutation(frame_length)
             for camera_id in tqdm(camera_ids):
                 self.run_train_step(camera_id)
+                self.neural_render.next_iter()
             self.scheduler.step()
             if epoch % self.epoch_save_fields == 0:
                 output_field_dir: Path = render_dir / "fields"
