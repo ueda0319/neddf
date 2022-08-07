@@ -38,23 +38,6 @@ class TestTanhExpGradFunction:
             retain_graph=True,
             only_inputs=True,
         )[0].reshape(batch_size, input_dim, feature_dim)
-        grad_output = torch.ones_like(G, requires_grad=False)
-        dGdx = torch.autograd.grad(
-            outputs=G,
-            inputs=x,
-            grad_outputs=grad_output,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True,
-        )[0].reshape(batch_size, feature_dim)
-        dGdJ = torch.autograd.grad(
-            outputs=G,
-            inputs=J,
-            grad_outputs=grad_output,
-            create_graph=True,
-            retain_graph=True,
-            only_inputs=True,
-        )[0].reshape(batch_size, input_dim, feature_dim)
         assert torch.mean(((dydx[:, None, :] * J) - G).abs()) < 1e-4
         assert torch.mean(dydJ.abs()) < 1e-4
 
@@ -65,8 +48,35 @@ class TestTanhExpGradFunction:
             delta_x = torch.matmul(delta_t[:,None, :], J)[:, 0, :]
             y2, G2 = TanhExpGradFunction.apply(x+delta_x, J)
             assert torch.mean(((y2-y)*1000 - G[:, axis, :]).abs()) < 5e-4
-            
-            assert torch.mean(((G2-G)[:, axis, :] * 1000 - dGdx[:, axis, :]).abs()) < 5e-4
-            
+
+            grad_output = torch.zeros_like(G, requires_grad=False)
+            grad_output[:, axis, :] = 1.0
+            dGdx = torch.autograd.grad(
+                outputs=G,
+                inputs=x,
+                grad_outputs=grad_output,
+                create_graph=True,
+                retain_graph=True,
+                only_inputs=True,
+            )[0].reshape(batch_size, feature_dim)            
+            assert torch.mean(((G2-G)[:, axis, :] * 1000 - dGdx*J[:, axis, :]).abs()) < 5e-4
+        
+        input_axis = 1
+        feature_axis = 2
+        delta_J = 0.001 * torch.ones(batch_size, input_dim, feature_dim)
+        y3, G3 = TanhExpGradFunction.apply(x, J+delta_J)
+        grad_output = torch.ones_like(G, requires_grad=False)
+        dGdJ = torch.autograd.grad(
+            outputs=G,
+            inputs=J,
+            grad_outputs=grad_output,
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True,
+        )[0].reshape(batch_size, input_dim, feature_dim)   
+        assert torch.mean(((G3-G)*1000 - dGdJ).abs()) < 5e-4
+
+
+        
         
 
