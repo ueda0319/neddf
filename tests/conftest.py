@@ -75,6 +75,13 @@ def neus_fixture():
 
 @pytest.fixture
 def neddf_fixture():
+    penalty_weight: Dict[str, float] = {
+        "constraints_aux_grad": 0.05,
+        "constraints_dDdt": 0.05,
+        "constraints_color": 0.0,
+        "range_distance": 1.0,
+        "range_aux_grad": 1.0,
+    }
     neddf: NeDDF = NeDDF(
         embed_pos_rank=6,
         embed_dir_rank=4,
@@ -84,6 +91,7 @@ def neddf_fixture():
         col_layer_width=256,
         d_near=0.01,
         activation_type="ReLU",
+        penalty_weight=penalty_weight,
         skips=[4],
     )
     return neddf

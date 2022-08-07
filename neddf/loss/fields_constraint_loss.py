@@ -3,10 +3,11 @@ from neddf.loss.base_loss import BaseLoss
 from torch import Tensor
 
 
-class RangeLoss(BaseLoss):
-    """RangeLoss.
+class FieldsConstraintLoss(BaseLoss):
+    """FieldsConstraintLoss.
 
-    This class inheriting base_loss calculate penalty for values outside range.
+    This class inheriting base_loss calculate penalty for constraints of field.
+    The formulation is from neddf paper.
 
     Attributes:
         weight (float): weight for color loss
@@ -19,9 +20,9 @@ class RangeLoss(BaseLoss):
         weight_coarse: float = 0.1,
     ) -> None:
         super().__init__(
-            key_output="range_penalty",
-            key_target="range_penalty",
-            key_loss="range_penalty",
+            key_output="fields_penalty",
+            key_target="fields_penalty",
+            key_loss="fields_penalty",
             weight=weight,
             weight_coarse=weight_coarse,
         )

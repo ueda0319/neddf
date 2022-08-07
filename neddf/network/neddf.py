@@ -28,6 +28,7 @@ class NeDDF(BaseNeuralField):
         activation_type: str = "tanhExp",
         d_near: float = 0.01,
         skips: Optional[List[int]] = None,
+        penalty_weight: Optional[Dict[str, float]] = None,
     ) -> None:
         """Initializer
 
@@ -95,6 +96,15 @@ class NeDDF(BaseNeuralField):
 
         self.d_near: float = d_near
         self.aux_grad_scale: float = 1.0
+        if penalty_weight is None:
+            penalty_weight = {
+                "constraints_aux_grad": 0.05,
+                "constraints_dDdt": 0.05,
+                "constraints_color": 0.01,
+                "range_distance": 1.0,
+                "range_aux_grad": 1.0,
+            }
+        self.penalty_weight: Dict[str, float] = penalty_weight
 
     def forward(
         self,
@@ -170,38 +180,48 @@ class NeDDF(BaseNeuralField):
         dDdt: Tensor = torch.norm(nabla_distance, dim=1)[:, None]  # type: ignore
         distance_inv: Tensor = torch.reciprocal(distance)
         density: Tensor = distance_inv * (1 - dDdt)
-
-        # for calculate penalties
         norm_dir = torch.reciprocal(distance_grad_norm + 1e-7) * distance_grad
-        d2D_dwdt = torch.sum(aux_gg * norm_dir, 1)[:, None]
-        d2D_dwdt_rest = 3 * aux_grad * distance_inv.detach()
-
-        # penalty for aux. gradient
-        ag_penalty_scale = (
-            aux_grad.detach() * distance_grad_norm.detach() * distance.detach()
-        )
-        ag_penalty = ag_penalty_scale * torch.square(d2D_dwdt - d2D_dwdt_rest)
-
-        # penalty for values which over ranges
-        # dDdt < 1.0
-        s_penalty_dDdt = 0.05 * torch.square(relu(-1.0 + dDdt))
-        # -4.0 < (distance before softplus) < 2.0
-        s_penalty_distance = torch.square(relu(-4.0 - ddf_out) + relu(-1.0 + ddf_out))
-        # -4.0 < (aux_grad before softplus) < 4.0
-        s_penalty_aux_grad = torch.square(relu(-4.0 - aux_out) + relu(-4.0 + aux_out))
-        s_penalty = s_penalty_dDdt + s_penalty_distance + s_penalty_aux_grad
 
         hx = torch.cat([embed_pos, embed_dir, norm_dir.detach(), features], dim=1)
         for layer in self.layers_col:
             hx = tanhExp.apply(layer(hx))
         color: Tensor = hx
 
+        # for calculate penalties of field constraints
+        penalties: Dict[str, Tensor] = {}
+        # penalty for aux. gradient
+        d2D_dwdt = torch.sum(aux_gg * norm_dir, 1)[:, None]
+        d2D_dwdt_rest = 3 * aux_grad * distance_inv.detach()
+        ag_penalty_scale = (
+            aux_grad.detach() * distance_grad_norm.detach() * distance.detach()
+        )
+        penalties["constraints_aux_grad"] = ag_penalty_scale * torch.square(
+            d2D_dwdt - d2D_dwdt_rest
+        )
+        # penalty for dDdt (dDdt < 1.0)
+        penalties["constraints_dDdt"] = torch.square(relu(-1.0 + dDdt))
+
+        # penalty for values which over ranges
+        # -4.0 < (distance before softplus) < 2.0
+        penalties["range_distance"] = torch.square(
+            relu(-4.0 - ddf_out) + relu(-1.0 + ddf_out)
+        )
+        # -4.0 < (aux_grad before softplus) < 4.0
+        penalties["range_aux_grad"] = torch.square(
+            relu(-4.0 - aux_out) + relu(-4.0 + aux_out)
+        )
+        # composit penalties
+        for key in penalties:
+            if key not in self.penalty_weight:
+                continue
+            penalties[key] = penalties[key] * self.penalty_weight[key]
+        fields_penalty = torch.sum(torch.stack(list(penalties.values()), dim=2), dim=2)
+
         output_dict: Dict[str, Tensor] = {
             "distance": distance.reshape(batch_size, sampling_size),
             "density": density.reshape(batch_size, sampling_size),
             "color": color.reshape(batch_size, sampling_size, 3),
-            "aux_grad_penalty": ag_penalty.reshape(batch_size, sampling_size),
-            "range_penalty": s_penalty.reshape(batch_size, sampling_size),
+            "fields_penalty": fields_penalty.reshape(batch_size, sampling_size),
             "aux_grad": aux_grad.reshape(batch_size, sampling_size),
         }
         return output_dict
