@@ -13,7 +13,7 @@ RenderTarget = Literal["color", "depth", "transmittance"]
 class BaseNeuralRender(ABC, nn.Module):
     def __init__(self) -> None:
         super().__init__()
-         # iteration counter. set `-1` for evaluation
+        # iteration counter. set `-1` for evaluation
         self.iteration: int = -1
 
     # Hierarchical sampling

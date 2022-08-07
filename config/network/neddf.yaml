@@ -9,9 +9,10 @@ d_near: 0.001
 activation_type: "tanhExp"
 penalty_weight:
   constraints_aux_grad: 0.05
-  constraints_dDdt: 0.2
-  constraints_color: 0.0
+  constraints_dDdt: 0.5
+  constraints_color: 0.0001
   range_distance: 1.0
   range_aux_grad: 1.0
+  range_color: 0.1
 skips:
   - 4

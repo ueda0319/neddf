@@ -2,7 +2,7 @@ from typing import Callable, Dict, Final, List, Optional, Tuple
 
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
-from neddf.nn_module import PositionalEncoding, tanhExp
+from neddf.nn_module import PositionalEncoding
 from neddf.nn_module.with_grad import (
     LinearGradLayer,
     PositionalEncodingGradLayer,
@@ -87,15 +87,15 @@ class NeDDF(BaseNeuralField):
                 )
             else:
                 layers_ddf.append(LinearGradLayer(ddf_layer_width, ddf_layer_width))
-        layers_col.append(nn.Linear(input_col_dim, col_layer_width))
+        layers_col.append(LinearGradLayer(input_col_dim, col_layer_width))
         for _ in range(col_layer_count - 1):
-            layers_col.append(nn.Linear(col_layer_width, col_layer_width))
-        layers_col.append(nn.Linear(col_layer_width, 3))
+            layers_col.append(LinearGradLayer(col_layer_width, col_layer_width))
         # Set layers as optimization targets
         self.layers_ddf = nn.ModuleList(layers_ddf)
+        self.layers_col = nn.ModuleList(layers_col)
         self.layer_ddf_out = LinearGradLayer(ddf_layer_width, 1)
         self.layer_aux_out = LinearGradLayer(ddf_layer_width, 1)
-        self.layers_col = nn.ModuleList(layers_col)
+        self.layer_col_out = LinearGradLayer(ddf_layer_width, 3)
 
         self.d_near: float = d_near
         self.aux_grad_scale: float = 1.0
@@ -153,8 +153,10 @@ class NeDDF(BaseNeuralField):
             sample_pos_grad,
             pe_grad_scale * pe_lowpass_scale * pe_weights,
         )
-        embed_pos: Tensor = self.pe_pos(
-            sampling.sample_pos.reshape(-1, 3), pe_weights * pe_lowpass_scale
+        embed_pos: Tensor = self.pe_pos_grad(
+            sampling.sample_pos.reshape(-1, 3),
+            sample_pos_grad,
+            pe_lowpass_scale * pe_weights,
         )
         embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
@@ -178,6 +180,7 @@ class NeDDF(BaseNeuralField):
         aux_grad: Tensor = self.aux_grad_scale * aux_grad_tuple[0]
         aux_gg: Tensor = self.aux_grad_scale * aux_grad_tuple[1][:, :, 0]
         features: Tensor = hx
+        featuresJ: Tensor = hJ
 
         nabla_distance: Tensor = torch.cat([distance_grad, aux_grad], dim=1)
         distance_grad_norm: Tensor = torch.norm(distance_grad, dim=1)[:, None]  # type: ignore
@@ -188,10 +191,21 @@ class NeDDF(BaseNeuralField):
         density: Tensor = distance_inv * (1 - dDdt)
         norm_dir = torch.reciprocal(distance_grad_norm + 1e-7) * distance_grad
 
-        hx = torch.cat([embed_pos, embed_dir, norm_dir.detach(), features], dim=1)
+        hx = torch.cat([embed_pos[0], embed_dir, norm_dir.detach(), features], dim=1)
+        hJ = torch.cat(
+            [
+                embed_pos[1],
+                torch.zeros(batch_size * sampling_size, 3, embed_dir.shape[1] + 3).to(
+                    device
+                ),
+                featuresJ,
+            ],
+            dim=2,
+        )
         for layer in self.layers_col:
-            hx = tanhExp.apply(layer(hx))
-        color: Tensor = hx
+            hx, hJ = layer(hx, hJ)
+            hx, hJ = self.activation(hx, hJ)
+        color, colorJ = self.layer_col_out(hx, hJ)
 
         # for calculate penalties of field constraints
         penalties: Dict[str, Tensor] = {}
@@ -216,6 +230,18 @@ class NeDDF(BaseNeuralField):
         # -4.6 < (aux_grad before softplus) < 4.6
         penalties["range_aux_grad"] = torch.square(
             relu(-4.6 - aux_out) + relu(-4.6 + aux_out)
+        )
+        # 0.0 < (color) < 1.0
+        penalties["range_color"] = torch.square(
+            relu(-0.0 - color) + relu(-1.0 + color)
+        ).sum(1, keepdim=True)
+
+        # penalty for color field
+        penalties["constraints_color"] = (
+            (colorJ * distance_grad.detach().unsqueeze(2))
+            .sum(1)
+            .square()
+            .sum(1, keepdim=True)
         )
         # composit penalties
         for key in penalties:
