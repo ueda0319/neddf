@@ -174,11 +174,8 @@ class BaseTrainer(ABC):
                 torch.from_numpy(mask_gt_np).to(torch.float32).to(self.device)
             )
 
-        if "AuxGradLoss" in loss_types:
-            targets["aux_grad_penalty"] = torch.zeros(us_int.shape, dtype=torch.float32)
-
-        if "RangeLoss" in loss_types:
-            targets["range_penalty"] = torch.zeros(us_int.shape, dtype=torch.float32)
+        if "FieldsConstraintLoss" in loss_types:
+            targets["fields_penalty"] = torch.zeros(us_int.shape, dtype=torch.float32)
 
         return targets
 

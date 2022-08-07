@@ -3,10 +3,10 @@ from neddf.loss.base_loss import BaseLoss
 from torch import Tensor
 
 
-class AuxGradLoss(BaseLoss):
-    """AuxGradLoss.
+class FieldsConstraintLoss(BaseLoss):
+    """FieldsConstraintLoss.
 
-    This class inheriting base_loss calculate penalty for shape of auxiliary gradients.
+    This class inheriting base_loss calculate penalty for constraints of field.
     The formulation is from neddf paper.
 
     Attributes:
@@ -20,13 +20,13 @@ class AuxGradLoss(BaseLoss):
         weight_coarse: float = 0.1,
     ) -> None:
         super().__init__(
-            key_output="aux_grad_penalty",
-            key_target="aux_grad_penalty",
-            key_loss="aux_grad_penalty",
+            key_output="fields_penalty",
+            key_target="fields_penalty",
+            key_loss="fields_penalty",
             weight=weight,
             weight_coarse=weight_coarse,
         )
 
     def loss(self, output: Tensor, target: Tensor) -> Tensor:
-        res = torch.mean(torch.square(output))
+        res = torch.mean(output)
         return res
