@@ -11,6 +11,11 @@ RenderTarget = Literal["color", "depth", "transmittance"]
 
 
 class BaseNeuralRender(ABC, nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        # iteration counter. set `-1` for evaluation
+        self.iteration: int = -1
+
     # Hierarchical sampling
     def sample_pdf(
         self,
@@ -199,6 +204,9 @@ class BaseNeuralRender(ABC, nn.Module):
     ) -> Dict[str, ndarray]:
         raise NotImplementedError()
 
+    def next_iter(self) -> None:
+        self.set_iter(self.iteration + 1)
+
     def set_iter(self, iter: int) -> None:
         """Set iteration
 
@@ -207,4 +215,4 @@ class BaseNeuralRender(ABC, nn.Module):
         Args:
             iter (int): current iteration. Set -1 for evaluation.
         """
-        pass
+        self.iteration = iter

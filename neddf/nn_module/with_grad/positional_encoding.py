@@ -1,3 +1,4 @@
+import math
 from typing import Optional, Tuple
 
 import torch
@@ -108,3 +109,22 @@ class PositionalEncodingGradLayer(nn.Module):
         )
         scale = scale.expand_as(p).to(x.device)
         return torch.cat([scale * torch.sin(p), scale * torch.cos(p)], 1)
+
+    def get_grad_scale(self, input_dim: int = 3) -> Tensor:
+        return (
+            torch.reciprocal(2.0 * self.freq)
+            .unsqueeze(1)
+            .expand(-1, input_dim)
+            .reshape(1, -1)
+        )
+
+    def get_lowpass_scale(self, alpha: float = 1.0, input_dim: int = 3) -> Tensor:
+        with torch.no_grad():  # type: ignore
+            if alpha >= self.embed_dim:
+                return torch.ones(1, self.embed_dim * input_dim)
+            scale: Tensor = torch.ones(self.embed_dim)
+            k = int(alpha)
+            scale[k] = 0.5 * (1 - math.cos(math.pi * (alpha - k))) + 1e-7
+            if k + 1 < self.embed_dim:
+                scale[k + 1 :] = 1e-7
+            return scale.unsqueeze(1).expand(-1, input_dim).reshape(1, -1)
