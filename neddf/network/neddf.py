@@ -3,10 +3,17 @@ from typing import Callable, Dict, Final, List, Optional, Tuple
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
 from neddf.nn_module import PositionalEncoding, tanhExp
-from neddf.nn_module.with_grad import LinearGradLayer, PositionalEncodingGradLayer, ReLUGradFunction, SigmoidGradFunction, SoftplusGradFunction, TanhExpGradFunction
+from neddf.nn_module.with_grad import (
+    LinearGradLayer,
+    PositionalEncodingGradLayer,
+    ReLUGradFunction,
+    SigmoidGradFunction,
+    SoftplusGradFunction,
+    TanhExpGradFunction,
+)
 from neddf.ray import Sampling
-from torch import Tensor, nn, sigmoid
-from torch.nn.functional import relu, softplus
+from torch import Tensor, nn
+from torch.nn.functional import relu
 
 
 class NeDDF(BaseNeuralField):
@@ -47,15 +54,21 @@ class NeDDF(BaseNeuralField):
             skips = [4]
         self.skips = skips
 
-        activation_types: Final[Dict[str, Callable[[Tensor], Tensor]]] = {
+        activation_types: Final[
+            Dict[str, Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]]]
+        ] = {
             "ReLU": ReLUGradFunction.apply,
             "tanhExp": TanhExpGradFunction.apply,
         }
 
-        self.activation: Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]] = activation_types[activation_type]
+        self.activation: Callable[
+            [Tensor, Tensor], Tuple[Tensor, Tensor]
+        ] = activation_types[activation_type]
 
         # create positional encoding layers
-        self.pe_pos_grad: PositionalEncodingGradLayer = PositionalEncodingGradLayer(embed_pos_rank)
+        self.pe_pos_grad: PositionalEncodingGradLayer = PositionalEncodingGradLayer(
+            embed_pos_rank
+        )
         self.pe_pos: PositionalEncoding = PositionalEncoding(embed_pos_rank)
         self.pe_dir: PositionalEncoding = PositionalEncoding(embed_dir_rank)
 
@@ -106,7 +119,12 @@ class NeDDF(BaseNeuralField):
         sampling_size: Final[int] = sampling.sample_pos.shape[1]
         device: torch.device = sampling.sample_pos.device
 
-        sample_pos_grad: Tensor = torch.eye(3).to(device).unsqueeze(0).expand(batch_size*sampling_size, -1, -1)
+        sample_pos_grad: Tensor = (
+            torch.eye(3)
+            .to(device)
+            .unsqueeze(0)
+            .expand(batch_size * sampling_size, -1, -1)
+        )
         # scale PE with distance field to graditent becale same scale
         pe_pos_scale: Tensor = (
             torch.reciprocal(2.0 * self.pe_pos.freq)
@@ -135,19 +153,21 @@ class NeDDF(BaseNeuralField):
         ddf_out, ddf_outJ = self.layer_ddf_out(hx, hJ)
         distance_tuple = SoftplusGradFunction.apply(ddf_out, ddf_outJ)
         distance: Tensor = distance_tuple[0] + self.d_near
-        distance_grad: Tensor = distance_tuple[1][:,:,0]
+        distance_grad: Tensor = distance_tuple[1][:, :, 0]
 
         aux_out, aux_outJ = self.layer_aux_out(hx, hJ)
-        aux_grad_tuple: Tuple[Tensor, Tensor] = SigmoidGradFunction.apply(aux_out, aux_outJ)
-        aux_grad: Tensor = self.aux_grad_scale * aux_grad_tuple[0]#sigmoid(hx[:, 1:2])
-        aux_gg: Tensor = self.aux_grad_scale * aux_grad_tuple[1][:,:,0]#hJ[:, :, 1]
+        aux_grad_tuple: Tuple[Tensor, Tensor] = SigmoidGradFunction.apply(
+            aux_out, aux_outJ
+        )
+        aux_grad: Tensor = self.aux_grad_scale * aux_grad_tuple[0]
+        aux_gg: Tensor = self.aux_grad_scale * aux_grad_tuple[1][:, :, 0]
         features: Tensor = hx
-        
+
         nabla_distance: Tensor = torch.cat([distance_grad, aux_grad], dim=1)
         distance_grad_norm: Tensor = torch.norm(distance_grad, dim=1)[:, None]  # type: ignore
 
         # calculate density from nabla_distance and inverse distance
-        dDdt: Tensor = distance_grad_norm#torch.norm(nabla_distance, dim=1)[:, None]  # type: ignore
+        dDdt: Tensor = torch.norm(nabla_distance, dim=1)[:, None]  # type: ignore
         distance_inv: Tensor = torch.reciprocal(distance)
         density: Tensor = distance_inv * (1 - dDdt)
 
@@ -166,13 +186,9 @@ class NeDDF(BaseNeuralField):
         # dDdt < 1.0
         s_penalty_dDdt = 0.05 * torch.square(relu(-1.0 + dDdt))
         # -4.0 < (distance before softplus) < 2.0
-        s_penalty_distance = torch.square(
-            relu(-4.0 - ddf_out) + relu(-1.0 + ddf_out)
-        )
+        s_penalty_distance = torch.square(relu(-4.0 - ddf_out) + relu(-1.0 + ddf_out))
         # -4.0 < (aux_grad before softplus) < 4.0
-        s_penalty_aux_grad = torch.square(
-            relu(-4.0 - aux_out) + relu(-4.0 + aux_out)
-        )
+        s_penalty_aux_grad = torch.square(relu(-4.0 - aux_out) + relu(-4.0 + aux_out))
         s_penalty = s_penalty_dDdt + s_penalty_distance + s_penalty_aux_grad
 
         hx = torch.cat([embed_pos, embed_dir, norm_dir.detach(), features], dim=1)

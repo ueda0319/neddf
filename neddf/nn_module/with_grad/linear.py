@@ -62,7 +62,9 @@ class LinearGradFunction(torch.autograd.Function):
             grad_J = dLdG.matmul(weight_t.t())
         if ctx.needs_input_grad[2]:  # type: ignore
             # grad_weight = x.t().mm(dLdy) + torch.sum(J.transpose(1, 2).matmul(dLdG), 0)
-            grad_weight = x.t().mm(dLdy) + J.view(-1, input_ch).t().matmul(dLdG.view(-1,output_ch))
+            grad_weight = x.t().mm(dLdy) + J.view(-1, input_ch).t().matmul(
+                dLdG.view(-1, output_ch)
+            )
         if bias is not None and ctx.needs_input_grad[3]:  # type: ignore
             grad_bias = dLdy.sum(0)
 

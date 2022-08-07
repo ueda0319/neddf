@@ -22,9 +22,9 @@ class SigmoidGradFunction(torch.autograd.Function):
             J (Tensor[batch_size, 3, input_ch, float]): gradients of input features
         """
         bs, input_ch = x.shape
-        tx = (1.0 + torch.tanh(s*x * 0.5)) * 0.5
+        tx = (1.0 + torch.tanh(s * x * 0.5)) * 0.5
         y = tx
-        dydx = s*tx * (1 - tx)
+        dydx = s * tx * (1 - tx)
         dGdJ = dydx.unsqueeze(2).expand_as(J)
         G = dGdJ * J
 
