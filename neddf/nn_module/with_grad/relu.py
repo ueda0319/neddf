@@ -44,7 +44,7 @@ class ReLUGradFunction(torch.autograd.Function):
         Contexts:
             mask (Tensor[batch_size, input_ch, bool])
         """
-        mask = ctx.saved_tensors  # type: ignore
+        mask = ctx.saved_tensors[0]  # type: ignore
         dLdx = dLdy * mask
         dLdJ = dLdG * mask.unsqueeze(1)
 
