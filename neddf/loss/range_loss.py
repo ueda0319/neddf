@@ -27,5 +27,5 @@ class RangeLoss(BaseLoss):
         )
 
     def loss(self, output: Tensor, target: Tensor) -> Tensor:
-        res = torch.mean(torch.square(output))
+        res = torch.mean(output)
         return res

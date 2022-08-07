@@ -58,7 +58,7 @@ class SoftplusGradFunction(torch.autograd.Function):
         J, dydx, dGdJ, mask = ctx.saved_tensors  # type: ignore
         d2x = (1 - dydx) * dydx
         d2x[mask] = 0.0
-        dGdx = d2x * torch.sum(J * dLdG, 2)
+        dGdx = d2x * torch.sum(J * dLdG, 1)
         dLdx = dLdy * dydx + dGdx
         dLdJ = dLdG * dGdJ
         return dLdx, dLdJ, None

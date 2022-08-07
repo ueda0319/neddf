@@ -57,7 +57,7 @@ class TanhExpGradFunction(torch.autograd.Function):
             mask (Tensor[batch_size, input_ch, bool])
         """
         d2x, J, dydx, dGdJ, mask = ctx.saved_tensors  # type: ignore
-        dGdx = d2x * torch.sum(J * dLdG, 2)
+        dGdx = d2x * torch.sum(J * dLdG, 1)
         dLdx = dLdy * dydx + dGdx
         dLdJ = dLdG * dGdJ
 

@@ -5,7 +5,7 @@ ddf_layer_count: 8
 ddf_layer_width: 256
 col_layer_count: 4
 col_layer_width: 256
-d_near: 0.01
+d_near: 0.001
 activation_type: "tanhExp"
 skips:
   - 4

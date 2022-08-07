@@ -27,12 +27,9 @@ class LinearGradFunction(torch.autograd.Function):
         y = x.mm(weight_t)
         if bias is not None:
             y += bias.unsqueeze(0).expand_as(y)
-            use_bias: bool = True
-        else:
-            use_bias = False
         G = J.matmul(weight_t)
 
-        ctx.save_for_backward(x, J, weight_t, use_bias)  # type: ignore
+        ctx.save_for_backward(x, J, weight_t, bias)  # type: ignore
         return y, G
 
     @staticmethod
@@ -54,17 +51,19 @@ class LinearGradFunction(torch.autograd.Function):
             x (Tensor[batch_size, input_ch, float]): input features
             J (Tensor[batch_size, 3, input_ch, float]): gradients of input features
             weight_t (Tensor[input_ch, output_ch, float]): weights
-            use_bias (bool): bias
+            bias (Tensor[output_ch, float]): bias
         """
-        x, J, weight_t, use_bias = ctx.saved_tensors  # type: ignore
+        x, J, weight_t, bias = ctx.saved_tensors  # type: ignore
+        input_ch, output_ch = weight_t.shape
         grad_x = grad_J = grad_weight = grad_bias = None
         if ctx.needs_input_grad[0]:  # type: ignore
             grad_x = dLdy.mm(weight_t.t())
         if ctx.needs_input_grad[1]:  # type: ignore
             grad_J = dLdG.matmul(weight_t.t())
         if ctx.needs_input_grad[2]:  # type: ignore
-            grad_weight = dLdy.t().mm(x) + torch.sum(J.matmul(dLdG.transpose(1, 2)), 0)
-        if use_bias and ctx.needs_input_grad[3]:  # type: ignore
+            # grad_weight = x.t().mm(dLdy) + torch.sum(J.transpose(1, 2).matmul(dLdG), 0)
+            grad_weight = x.t().mm(dLdy) + J.view(-1, input_ch).t().matmul(dLdG.view(-1,output_ch))
+        if bias is not None and ctx.needs_input_grad[3]:  # type: ignore
             grad_bias = dLdy.sum(0)
 
         return grad_x, grad_J, grad_weight, grad_bias
