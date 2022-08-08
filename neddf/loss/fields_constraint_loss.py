@@ -46,6 +46,9 @@ class FieldsConstraintLoss(BaseLoss):
             output (Tensor): Inference result of network
             target (Tensor): The target values output should have taken
 
+        Returns:
+            Tensor[1, float]: Calculated loss value
+
         """
         res = torch.mean(output)
         return res

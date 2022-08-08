@@ -47,6 +47,9 @@ class MaskBCELoss(BaseLoss):
             output (Tensor): Inference result of network
             target (Tensor): The target values output should have taken
 
+        Returns:
+            Tensor[1, float]: Calculated loss value
+
         """
         mask_output: Tensor = torch.clamp(1.0 - output, 1e-6, 1.0 - 1e-6)
         res = -torch.mean(

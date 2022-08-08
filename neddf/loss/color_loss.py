@@ -47,6 +47,9 @@ class ColorLoss(BaseLoss):
             output (Tensor): Inference result of network
             target (Tensor): The target values output should have taken
 
+        Returns:
+            Tensor[1, float]: Calculated loss value
+
         """
         res = torch.mean(torch.square(output - target))
         return res

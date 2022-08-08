@@ -60,6 +60,12 @@ class BaseLoss(ABC, nn.Module):
                 The target values outputs should have taken.
                 This should include key_target as key.
 
+        Returns:
+            Dict[str, Tensor]{
+                '{self.key_loss}' (Tensor[1, float32]): Calculated loss value
+                '{self.key_loss}_coarse' (Tensor[1 float32]): Calculated loss value in coarse
+            }
+
         """
         assert self.key_output in outputs
         assert self.key_target in targets
@@ -87,6 +93,9 @@ class BaseLoss(ABC, nn.Module):
         Args:
             output (Tensor): Inference result of network
             target (Tensor): The target values output should have taken
+
+        Returns:
+            Tensor[1, float]: Calculated loss value
 
         """
         raise NotImplementedError()
