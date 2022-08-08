@@ -9,7 +9,7 @@ class BaseCameraCalib(ABC, nn.Module):
     """Abstract base class for camera calibration.
 
     Attributes:
-        params (np.ndarray[dim, float]): Camera intrisic parameters
+        params (ndarray[dim, float]): Camera intrisic parameters
             Note that the number of dimensions differs for each calibration model.
     """
 
@@ -22,7 +22,7 @@ class BaseCameraCalib(ABC, nn.Module):
         This method initialize common attributes.
 
         Args:
-            calib_param (np.ndarray[dim, float]): Camera intrisic parameters
+            calib_param (ndarray[dim, float]): Camera intrisic parameters
 
         Note:
             This method is called during initialization.
@@ -36,6 +36,7 @@ class BaseCameraCalib(ABC, nn.Module):
 
     @property
     def device(self) -> torch.device:
+        """torch.device: device information(ex: cpu, cuda:0) of this instance"""
         return self.params.device
 
     @abstractmethod

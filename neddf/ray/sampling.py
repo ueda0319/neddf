@@ -28,6 +28,7 @@ class Sampling:
 
     @property
     def device(self) -> torch.device:
+        """torch.device: device information(ex: cpu, cuda:0) of this instance"""
         return self.sample_pos.device
 
     def get_pe_weights(self, freq: Tensor) -> Tensor:

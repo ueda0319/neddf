@@ -26,6 +26,7 @@ class Ray:
 
     @property
     def device(self) -> torch.device:
+        """torch.device: device information(ex: cpu, cuda:0) of this instance"""
         return self.ray_dir.device
 
     def __len__(self) -> int:

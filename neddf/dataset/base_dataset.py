@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict
 
 import numpy as np
+from numpy import ndarray
 from torch.utils.data import Dataset
 
 
@@ -10,11 +11,11 @@ class BaseDataset(ABC, Dataset):
     """Abstract base class for dataset.
 
     Attributes:
-        camera_calib_params (np.ndarray[4, float]): camera intrisic parameter [fx, fy, cx, cy]
-        camera_params (np.ndarray[bs, 6, float]): camera pose parameter [rx, ry, rz, px, py, pz]
-        rgb_images (np.ndarray[bs, h, w, 3, uint8]): rgb images
-        mask_images (np.ndarray[bs, h, w, uint8]): mask images
-        depth_images (np.ndarray[bs, h, w, uint8]): depth images
+        camera_calib_params (ndarray[4, float]): camera intrisic parameter [fx, fy, cx, cy]
+        camera_params (ndarray[bs, 6, float]): camera pose parameter [rx, ry, rz, px, py, pz]
+        rgb_images (ndarray[bs, h, w, 3, uint8]): rgb images
+        mask_images (ndarray[bs, h, w, uint8]): mask images
+        depth_images (ndarray[bs, h, w, uint8]): depth images
     """
 
     def __init__(
@@ -24,11 +25,11 @@ class BaseDataset(ABC, Dataset):
     ) -> None:
         self.dataset_dir: Path = Path(dataset_dir)
         self.data_split: str = data_split
-        self.camera_calib_params: np.ndarray = np.zeros(4)
-        self.camera_params: np.ndarray = np.zeros((1, 6))
-        self.rgb_images: np.ndarray = np.zeros(0)
-        self.mask_images: np.ndarray = np.zeros(0)
-        self.depth_images: np.ndarray = np.zeros(0)
+        self.camera_calib_params: ndarray = np.zeros(4)
+        self.camera_params: ndarray = np.zeros((1, 6))
+        self.rgb_images: ndarray = np.zeros(0)
+        self.mask_images: ndarray = np.zeros(0)
+        self.depth_images: ndarray = np.zeros(0)
 
         self.load_data()
 
@@ -49,7 +50,7 @@ class BaseDataset(ABC, Dataset):
         raise NotImplementedError()
 
     @abstractmethod
-    def __getitem__(self, item: int) -> Dict[str, np.ndarray]:
+    def __getitem__(self, item: int) -> Dict[str, ndarray]:
         raise NotImplementedError()
 
     def __len__(self) -> int:

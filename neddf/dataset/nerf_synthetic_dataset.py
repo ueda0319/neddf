@@ -16,10 +16,10 @@ class NeRFSyntheticDataset(BaseDataset):
     (https://drive.google.com/drive/folders/128yBriW1IG_3NJ5Rp7APSTZsJqdJdfc1)
 
     Attributes:
-        camera_calib_params (np.ndarray[4, float]): camera intrisic parameter [fx, fy, cx, cy]
-        camera_params (np.ndarray[bs, 6, float]): camera pose parameter [rx, ry, rz, px, py, pz]
-        rgb_images (np.ndarray[bs, h, w, 3, uint8]): rgb images
-        mask_images (np.ndarray[bs, h, w, uint8]): mask images
+        camera_calib_params (ndarray[4, float]): camera intrisic parameter [fx, fy, cx, cy]
+        camera_params (ndarray[bs, 6, float]): camera pose parameter [rx, ry, rz, px, py, pz]
+        rgb_images (ndarray[bs, h, w, 3, uint8]): rgb images
+        mask_images (ndarray[bs, h, w, uint8]): mask images
     """
 
     def load_data(self) -> None:
@@ -39,9 +39,9 @@ class NeRFSyntheticDataset(BaseDataset):
         camera_angle_x: Final[float] = float(transform_data["camera_angle_x"])
         focal: Final[float] = 0.5 * w / np.tan(0.5 * camera_angle_x)
 
-        rgb_images: List[np.ndarray] = []
-        mask_images: List[np.ndarray] = []
-        camera_params: List[np.ndarray] = []
+        rgb_images: List[ndarray] = []
+        mask_images: List[ndarray] = []
+        camera_params: List[ndarray] = []
         for frame in transform_data["frames"]:
             # Get camera pose
             transform_matrix: ndarray = np.array(frame["transform_matrix"])
@@ -63,7 +63,7 @@ class NeRFSyntheticDataset(BaseDataset):
         self.rgb_images: ndarray = np.stack(rgb_images, 0)
         self.mask_images: ndarray = np.stack(mask_images, 0)
 
-    def __getitem__(self, item: int) -> Dict[str, np.ndarray]:
+    def __getitem__(self, item: int) -> Dict[str, ndarray]:
         return {
             "camera_calib_params": self.camera_calib_params,
             "camera_params": self.camera_params[item, :],
