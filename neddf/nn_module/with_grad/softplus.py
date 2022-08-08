@@ -5,6 +5,12 @@ from torch import Tensor
 
 
 class SoftplusGradFunction(torch.autograd.Function):
+    """SoftplusGradFunction
+
+    This class inheriting torch.autograd.Function.
+    This function calculate ReLU with first order gradient as forward propagation.
+    """
+
     @staticmethod
     def forward(  # type: ignore
         ctx: torch.autograd.function._ContextMethodMixin,
@@ -20,6 +26,14 @@ class SoftplusGradFunction(torch.autograd.Function):
             ctx (_ContextMethodMixin): ctx for keep values used in backward
             x (Tensor[batch_size, input_ch, float]): input features
             J (Tensor[batch_size, 3, input_ch, float]): gradients of input features
+            threshold (float): threshold to treat linear
+
+        Returns:
+            Tuple[
+                Tensor[batch_size, input_ch, float]
+                Tensor[batch_size, 3, input_ch, float]
+            ]
+
         """
         bs, input_ch = x.shape
         mask = x > threshold
@@ -53,7 +67,18 @@ class SoftplusGradFunction(torch.autograd.Function):
             dLdG (Tensor[batch_size, 3, output_ch, float]): gradients of output features
 
         Contexts:
+            d2x (Tensor[batch_size, input_ch, bool])
+            J (Tensor[batch_size, 3, input_ch, bool])
+            dGgJ (Tensor[batch_size, 3, input_ch, bool])
             mask (Tensor[batch_size, input_ch, bool])
+
+        Returns:
+            Tuple[
+                Tensor[batch_size, input_ch, float]
+                Tensor[batch_size, 3, input_ch, float]
+                None
+            ]
+
         """
         J, dydx, dGdJ, mask = ctx.saved_tensors  # type: ignore
         d2x = (1 - dydx) * dydx

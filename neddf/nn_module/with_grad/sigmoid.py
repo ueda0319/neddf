@@ -5,6 +5,12 @@ from torch import Tensor
 
 
 class SigmoidGradFunction(torch.autograd.Function):
+    """LinearGradFunction
+
+    This class inheriting torch.autograd.Function.
+    This function calculate Sigmoid with first order gradient as forward propagation.
+    """
+
     @staticmethod
     def forward(  # type: ignore
         ctx: torch.autograd.function._ContextMethodMixin,
@@ -20,6 +26,14 @@ class SigmoidGradFunction(torch.autograd.Function):
             ctx (_ContextMethodMixin): ctx for keep values used in backward
             x (Tensor[batch_size, input_ch, float]): input features
             J (Tensor[batch_size, 3, input_ch, float]): gradients of input features
+            s (float): efficient of softplus
+
+        Returns:
+            Tuple[
+                Tensor[batch_size, input_ch, float]
+                Tensor[batch_size, 3, input_ch, float]
+            ]
+
         """
         bs, input_ch = x.shape
         tx = (1.0 + torch.tanh(s * x * 0.5)) * 0.5
@@ -47,7 +61,18 @@ class SigmoidGradFunction(torch.autograd.Function):
             dLdG (Tensor[batch_size, 3, output_ch, float]): gradients of output features
 
         Contexts:
-            mask (Tensor[batch_size, input_ch, bool])
+            J (Tensor[batch_size, 3, input_ch, bool])
+            tx (Tensor[batch_size, input_ch, bool])
+            dydx (Tensor[batch_size, input_ch, bool])
+            dGdJ (Tensor[batch_size, 3, input_ch, bool])
+
+        Returns:
+            Tuple[
+                Tensor[batch_size, input_ch, float]
+                Tensor[batch_size, 3, input_ch, float]
+                None
+            ]
+
         """
         J, tx, dydx, dGdJ = ctx.saved_tensors
         d2x = dydx * (1.0 - 2 * tx)

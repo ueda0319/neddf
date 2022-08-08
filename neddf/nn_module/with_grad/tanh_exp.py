@@ -5,6 +5,12 @@ from torch import Tensor
 
 
 class TanhExpGradFunction(torch.autograd.Function):
+    """TanhExpGradFunction
+
+    This class inheriting torch.autograd.Function.
+    This function calculate ReLU with first order gradient as forward propagation.
+    """
+
     @staticmethod
     def forward(  # type: ignore
         ctx: torch.autograd.function._ContextMethodMixin,
@@ -20,6 +26,14 @@ class TanhExpGradFunction(torch.autograd.Function):
             ctx (_ContextMethodMixin): ctx for keep values used in backward
             x (Tensor[batch_size, input_ch, float]): input features
             J (Tensor[batch_size, 3, input_ch, float]): gradients of input features
+            threshold (float): threshold to treat linear
+
+        Returns:
+            Tuple[
+                Tensor[batch_size, input_ch, float]
+                Tensor[batch_size, 3, input_ch, float]
+            ]
+
         """
         mask = x > threshold
         ex = torch.exp(x)
@@ -50,11 +64,22 @@ class TanhExpGradFunction(torch.autograd.Function):
 
         Args:
             ctx (_ContextMethodMixin): ctx for keep values used in backward
-            dLdy (Tensor[batch_size, output_ch, float]): output features
-            dLdG (Tensor[batch_size, 3, output_ch, float]): gradients of output features
+            dLdy (Tensor[batch_size, input_ch, float]): output features
+            dLdG (Tensor[batch_size, 3, input_ch, float]): gradients of output features
 
         Contexts:
+            d2x (Tensor[batch_size, input_ch, bool])
+            J (Tensor[batch_size, 3, input_ch, bool])
+            dGgJ (Tensor[batch_size, 3, input_ch, bool])
             mask (Tensor[batch_size, input_ch, bool])
+
+        Returns:
+            Tuple[
+                Tensor[batch_size, input_ch, float]
+                Tensor[batch_size, 3, input_ch, float]
+                None
+            ]
+
         """
         d2x, J, dydx, dGdJ, mask = ctx.saved_tensors  # type: ignore
         dGdx = d2x * torch.sum(J * dLdG, 1)

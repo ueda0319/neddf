@@ -8,22 +8,27 @@ from torch import Tensor, nn
 class PositionalEncodingGradLayer(nn.Module):
     """PositionalEncoding module.
 
-    This class inheriting nn.Module calculate positional encoding.
-    The formulation is from original nerf paper.
-    Note that the instance is callable, that aliased to forward method
+    This class inheriting nn.Module calculate positional encoding
+    with first order gradient as forward propagation.
 
     Attributes:
         embed_dim (int): count of frequency used in positional encoding
+        freq (Tensor[embed_dim, float]): frequencies of each channel.
     """
 
     def __init__(
         self,
         embed_dim: int,
     ) -> None:
+        """Initializer
+
+        This method initialize PositionalEncodingGradLayer module.
+
+        Args:
+            embed_dim (int): Dimension of PE output.
+        """
         super().__init__()
         self.embed_dim: int = embed_dim
-        # Note: Original NeRF paper use pi * (2.0**t) for frequency, but for adjust
-        # scale of each datasets, this implementation use (2.0**t)
         self.freq: Tensor = torch.tensor([(2.0 ** t) for t in range(self.embed_dim)])
 
     def forward(
@@ -111,6 +116,16 @@ class PositionalEncodingGradLayer(nn.Module):
         return torch.cat([scale * torch.sin(p), scale * torch.cos(p)], 1)
 
     def get_grad_scale(self, input_dim: int = 3) -> Tensor:
+        """get_grad_scale
+
+        This method calculate scale for first order gradient
+
+        Args:
+            input_dim (int): input field's dimension (always 3)
+
+        Returns:
+            Tensor[1, freq*embed_dim, float32]: embed features
+        """
         return (
             torch.reciprocal(2.0 * self.freq)
             .unsqueeze(1)
@@ -119,6 +134,17 @@ class PositionalEncodingGradLayer(nn.Module):
         )
 
     def get_lowpass_scale(self, alpha: float = 1.0, input_dim: int = 3) -> Tensor:
+        """get_lowpass_scale
+
+        This method calculate scale for low pass filter
+
+        Args:
+            alpha (float): coefficient of low pass filter
+            input_dim (int): input field's dimension (always 3)
+
+        Returns:
+            Tensor[1, freq*embed_dim, float32]: embed features
+        """
         with torch.no_grad():  # type: ignore
             if alpha >= self.embed_dim:
                 return torch.ones(1, self.embed_dim * input_dim)

@@ -5,6 +5,12 @@ from torch import Tensor
 
 
 class ReLUGradFunction(torch.autograd.Function):
+    """LinearGradFunction
+
+    This class inheriting torch.autograd.Function.
+    This function calculate ReLU with first order gradient as forward propagation.
+    """
+
     @staticmethod
     def forward(  # type: ignore
         ctx: torch.autograd.function._ContextMethodMixin,
@@ -19,6 +25,13 @@ class ReLUGradFunction(torch.autograd.Function):
             ctx (_ContextMethodMixin): ctx for keep values used in backward
             x (Tensor[batch_size, input_ch, float]): input features
             J (Tensor[batch_size, 3, input_ch, float]): gradients of input features
+
+        Returns:
+            Tuple[
+                Tensor[batch_size, input_ch, float]
+                Tensor[batch_size, 3, input_ch, float]
+            ]
+
         """
         mask = x >= 0
         y = x * mask
@@ -43,6 +56,13 @@ class ReLUGradFunction(torch.autograd.Function):
 
         Contexts:
             mask (Tensor[batch_size, input_ch, bool])
+
+        Returns:
+            Tuple[
+                Tensor[batch_size, input_ch, float]
+                Tensor[batch_size, 3, input_ch, float]
+            ]
+
         """
         mask = ctx.saved_tensors[0]  # type: ignore
         dLdx = dLdy * mask
