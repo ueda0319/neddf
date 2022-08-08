@@ -41,6 +41,7 @@ def nerf_config_fixture():
         "layer_width": 256,
         "activation_type": "ReLU",
         "skips": [4],
+        "lowpass_alpha_offset": 10,
     }
     return OmegaConf.create(nerf_config)
 
@@ -93,6 +94,7 @@ def neddf_fixture():
         activation_type="ReLU",
         penalty_weight=penalty_weight,
         skips=[4],
+        lowpass_alpha_offset=10,
     )
     return neddf
 
@@ -107,6 +109,7 @@ def nerf_render_fixture():
         "layer_width": 256,
         "activation_type": "ReLU",
         "skips": [4],
+        "lowpass_alpha_offset": 10,
     }
     nerf_config_omega =  OmegaConf.create(nerf_config)
     neural_render: NeRFRender = NeRFRender(

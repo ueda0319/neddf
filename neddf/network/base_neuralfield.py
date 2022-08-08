@@ -6,6 +6,8 @@ from torch import Tensor, nn
 
 
 class BaseNeuralField(ABC, nn.Module):
+    """Abstract base class for NeuralField."""
+
     def set_iter(self, iter: int) -> None:
         """Set iteration
 
