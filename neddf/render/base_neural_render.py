@@ -91,9 +91,9 @@ class BaseNeuralRender(ABC, nn.Module):
 
         # Concatenate coarse sampling points when the flag is enabled.
         if cat_coarse:
-            samples_cat, _ = torch.sort(torch.cat([samples, dists], -1), dim=-1)
+            samples_cat: Tensor = torch.sort(torch.cat([samples, dists], -1), dim=-1)[0]
         else:
-            samples_cat, _ = torch.sort(samples, dim=-1)
+            samples_cat = torch.sort(samples, dim=-1)[0]
 
         if torch.any(torch.isnan(samples_cat)):
             print("pdf sampling failed")

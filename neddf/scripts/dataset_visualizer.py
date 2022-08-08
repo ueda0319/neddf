@@ -228,7 +228,7 @@ class Visualizer:
         self.scene.scene.add_geometry("bounding_box", bounding_box, self.line_material)
 
     def draw_camera_img(self, f: float = 0.5) -> None:
-        for idx, data in enumerate(self.dataset):
+        for idx, data in enumerate(self.dataset):  # type: ignore
             camera_calib_param: ndarray = data["camera_calib_params"]
             camera_param: ndarray = data["camera_params"]
             tx: float = f * 0.5 * self.dataset.image_width / camera_calib_param[0]
@@ -277,7 +277,7 @@ class Visualizer:
             )
 
     def draw_camera_pyramid(self, f: float = 0.5) -> None:
-        for idx, data in enumerate(self.dataset):
+        for idx, data in enumerate(self.dataset):  # type: ignore
             camera_calib_param: ndarray = data["camera_calib_params"]
             camera_param: ndarray = data["camera_params"]
             tx: float = f * 0.5 * self.dataset.image_width / camera_calib_param[0]
@@ -318,7 +318,7 @@ class Visualizer:
             )
 
     def draw_visible_range(self) -> None:
-        for idx, data in enumerate(self.dataset):
+        for idx, data in enumerate(self.dataset):  # type: ignore
             camera_calib_param: ndarray = data["camera_calib_params"]
             camera_param: ndarray = data["camera_params"]
             d_near: float = self.visible_range[0]
