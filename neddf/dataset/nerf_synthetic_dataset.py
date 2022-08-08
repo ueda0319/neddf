@@ -23,7 +23,17 @@ class NeRFSyntheticDataset(BaseDataset):
     """
 
     def load_data(self) -> None:
-        # Load dataset design file
+        """Load Dataset
+
+        Load images and camera poses from Dataset
+
+        Note:
+            This method is called during initialization.
+            `dataset_dir` and `dataset_split` are available in this method.
+            On inheritance, register the values in
+                `camera_calib_param`, `camera_params`, `rgb_images`.
+            (And register `mask_images` and `depth_images` if the dataset include them.)
+        """
         transform_path: Final[Path] = self.dataset_dir / "transforms_{}.json".format(
             self.data_split
         )
@@ -64,6 +74,18 @@ class NeRFSyntheticDataset(BaseDataset):
         self.mask_images: ndarray = np.stack(mask_images, 0)
 
     def __getitem__(self, item: int) -> Dict[str, ndarray]:
+        """Special method called in self[item]
+
+        Get item in selected index
+        The implementation is needed in torch.utils.data.Dataset
+
+        Args:
+            item (int): index of item
+
+        Returns:
+            Dict[str, ndarray]: dictionary of each item
+                Key takes `camera_calib_param`, `camera_params`, `rgb_images` and etc.
+        """
         return {
             "camera_calib_params": self.camera_calib_params,
             "camera_params": self.camera_params[item, :],

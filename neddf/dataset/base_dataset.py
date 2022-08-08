@@ -35,7 +35,7 @@ class BaseDataset(ABC, Dataset):
 
     @abstractmethod
     def load_data(self) -> None:
-        """Abstract method for load dataset
+        """Abstract method for Load Dataset
 
         Load images and camera poses from Dataset
 
@@ -51,15 +51,34 @@ class BaseDataset(ABC, Dataset):
 
     @abstractmethod
     def __getitem__(self, item: int) -> Dict[str, ndarray]:
+        """Special method called in self[item]
+
+        Get item in selected index
+        The implementation is needed in torch.utils.data.Dataset
+
+        Args:
+            item (int): index of item
+
+        Returns:
+            Dict[str, ndarray]: dictionary of each item
+                Key takes `camera_calib_param`, `camera_params`, `rgb_images` and etc.
+        """
         raise NotImplementedError()
 
     def __len__(self) -> int:
+        """Special method called in len(self)
+
+        Get count of items
+        The implementation is needed in torch.utils.data.Dataset
+        """
         return self.rgb_images.shape[0]
 
     @property
     def image_width(self) -> int:
+        """int: width of images in the dataset"""
         return self.rgb_images.shape[2]
 
     @property
     def image_height(self) -> int:
+        """int: height of images in the dataset"""
         return self.rgb_images.shape[1]
