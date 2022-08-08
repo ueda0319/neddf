@@ -23,6 +23,16 @@ class BaseDataset(ABC, Dataset):
         dataset_dir: str,
         data_split: str,
     ) -> None:
+        """Initializer
+
+        This method initialize common attributes.
+
+        Args:
+            dataset_dir (str): Path to dataset directory
+            data_split (str): Dataset split type
+                Usually takes one of ['train', 'test', 'valid'].
+
+        """
         self.dataset_dir: Path = Path(dataset_dir)
         self.data_split: str = data_split
         self.camera_calib_params: ndarray = np.zeros(4)
