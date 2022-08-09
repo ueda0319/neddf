@@ -11,7 +11,14 @@ RenderTarget = Literal["color", "depth", "transmittance"]
 
 
 class BaseNeuralRender(ABC, nn.Module):
+    """Abstract base class for NeuralRender."""
+
     def __init__(self) -> None:
+        """Initializer
+
+        This method initialize BaseNeuralRender module's common attributes.
+
+        """
         super().__init__()
         # iteration counter. set `-1` for evaluation
         self.iteration: int = -1
@@ -30,16 +37,16 @@ class BaseNeuralRender(ABC, nn.Module):
 
         Args:
             dists (Tensor[batch_size, samples_coarse, float32]):
-                distance of each coarse sampling points from camera position
+                Distance of each coarse sampling points from camera position
             weights (Tensor[batch_size, samples_coarse, float32]):
-                weight of each coarse sampling points
-            samples_fine (int): count of sampling points this method generate
+                Weight of each coarse sampling points
+            samples_fine (int): Count of sampling points this method generate
             cat_coarse (bool):
                 flag to concatenate coarse sampling point in output fine samplings
 
         Returns:
-            Tensor: dists of fine sampling points
-                note that shape of output takes [batch_size, samples_coarse + samples_fine] when
+            Tensor: Dists of fine sampling points.
+                Note that shape of output takes [batch_size, samples_coarse + samples_fine] when
                 cat_coarse is True, and [batch_size, samples_fine] other
         """
         if torch.any(torch.isnan(weights)) or torch.any(weights < 0.0):
@@ -113,6 +120,28 @@ class BaseNeuralRender(ABC, nn.Module):
         densities: Tensor,
         colors: Tensor,
     ) -> Dict[str, Tensor]:
+        """Integrate volume render
+
+        This method integrate informations of ray.
+        Formula of volume rendering is defined in NeRF paper.
+        (https://arxiv.org/abs/2003.08934)
+
+        Args:
+            dists (Tensor[batch_size, sampling_step, float32]):
+                Distance of each sampling points from camera position
+            densities (Tensor[batch_size, sampling_step, float32]):
+                Density of each sampling points
+            colors (Tensor[batch_size, sampling_step, 3, float32]):
+                Color of each sampling points
+
+        Returns:
+            Dict[str, Tensor]:
+                <weight> Tensor[batch_size, float]
+                <depth> Tensor[batch_size, float]
+                <depth_var> Tensor[batch_size, float]
+                <color> Tensor[batch_size, 3, float]
+                <transmittance> Tensor[batch_size, float]
+        """
         batch_size: Final[int] = dists.shape[0]
         sampling_step: Final[int] = dists.shape[1]
 
@@ -154,6 +183,13 @@ class BaseNeuralRender(ABC, nn.Module):
 
     @abstractmethod
     def get_parameters_list(self) -> List[Any]:
+        """get parameters list
+
+        Get list of parameters to refer from optimizer
+
+        Returns:
+            List[Tensor]: list of optimization target parameters
+        """
         raise NotImplementedError()
 
     @abstractmethod
@@ -162,6 +198,17 @@ class BaseNeuralRender(ABC, nn.Module):
         uv: Tensor,
         camera: Camera,
     ) -> Dict[str, Tensor]:
+        """get parameters list
+
+        Get list of parameters to refer from optimizer
+
+        Args:
+            uv (Tensor[batch_size, 2, int]): Pixel position of rays
+            camera (Camera): Rendering target camera
+
+        Returns:
+            Dict[str, Tensor]: integrated values
+        """
         raise NotImplementedError()
 
     @abstractmethod
@@ -197,14 +244,29 @@ class BaseNeuralRender(ABC, nn.Module):
     @abstractmethod
     def render_field_slice(
         self,
-        device: torch.device,
         slice_t: float = 0.0,
         render_size: float = 1.1,
         render_resolution: int = 128,
     ) -> Dict[str, ndarray]:
+        """render field slice
+
+        Render slice image of field
+
+        Args:
+            slice_t (float): Parameter of slice position
+            render_size (float): Range of rendering
+            render_resolution (int): Resolution of rendering
+
+        Returns:
+            Dict[str, Tensor]: each type of fields.
+        """
         raise NotImplementedError()
 
     def next_iter(self) -> None:
+        """Set iteration
+
+        This methods count up iteration number and update warmup.
+        """
         self.set_iter(self.iteration + 1)
 
     def set_iter(self, iter: int) -> None:

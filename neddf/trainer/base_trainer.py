@@ -145,7 +145,7 @@ class BaseTrainer(ABC):
             self.render_test(output_dir, camera_id, 1)
 
     def render_field_slices(self, output_field_dir: Path, epoch: int = 0) -> None:
-        images: Dict[str, ndarray] = self.neural_render.render_field_slice(self.device)
+        images: Dict[str, ndarray] = self.neural_render.render_field_slice()
         for key in images:
             write_path: Path = output_field_dir / "field_{}_{:04}.png".format(
                 key, epoch

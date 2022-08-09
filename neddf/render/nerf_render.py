@@ -18,6 +18,25 @@ SamplingType = Literal["point", "cone"]
 
 
 class NeRFRender(BaseNeuralRender):
+    """NeRFRender
+
+    This class hold networks, volumerender neuralfield, and visualize fields.
+
+    Attributes:
+        use_coarse_network (bool): Divide coarse network or not
+        network_fine (BaseNeuralField): Network for fine sampling
+        network_coarse (BaseNeuralField):
+            Network for fine sampling.
+            If use_coarse_network is false, it is clone of network_fine.
+        diag_variance (Tensor[batch_size, 3, float]): Diagonal of covariance matrix.
+        sample_coarse (int): Count of sampling point in coarse
+        sample_fine (int): Count of sampling point in fine
+        dist_near (float): Minimum value of sampling distance range
+        dist_far (float): Maximum value of sampling distance range
+        max_dist (float): Depth of transmitted ray
+        sampling_type (SamplingType): Sampling type
+    """
+
     def __init__(
         self,
         network_config: DictConfig,
@@ -29,6 +48,20 @@ class NeRFRender(BaseNeuralRender):
         use_coarse_network: bool = True,
         sampling_type: SamplingType = "point",
     ) -> None:
+        """Initializer
+
+        This method Initialize NeRFRender class
+
+        Args:
+            network_config (DictConfig): Configuration data from hydra
+            sample_coarse (int): Count of sampling point in coarse
+            sample_fine (int): Count of sampling point in fine
+            dist_near (float): Minimum value of sampling distance range
+            dist_far (float): Maximum value of sampling distance range
+            max_dist (float): Depth of transmitted ray
+            use_coarse_network (bool): Divide coarse network model or not
+            sampling_type (SamplingType): Sampling type
+        """
         super().__init__()
         self.use_coarse_network: bool = use_coarse_network
         self.network_fine: BaseNeuralField = hydra.utils.instantiate(
@@ -48,6 +81,13 @@ class NeRFRender(BaseNeuralRender):
         self.sampling_type: SamplingType = sampling_type
 
     def get_parameters_list(self) -> List[Any]:
+        """get parameters list
+
+        Get list of parameters to refer from optimizer
+
+        Returns:
+            List[Tensor]: list of optimization target parameters
+        """
         if self.use_coarse_network:
             return list(self.network_coarse.parameters()) + list(
                 self.network_fine.parameters()
@@ -60,6 +100,17 @@ class NeRFRender(BaseNeuralRender):
         uv: Tensor,
         camera: Camera,
     ) -> Dict[str, Tensor]:
+        """get parameters list
+
+        Get list of parameters to refer from optimizer
+
+        Args:
+            uv (Tensor[batch_size, 2, int]): Pixel position of rays
+            camera (Camera): Rendering target camera
+
+        Returns:
+            Dict[str, Tensor]: integrated values
+        """
         batch_size = uv.shape[0]
         device = uv.device
 
@@ -200,12 +251,24 @@ class NeRFRender(BaseNeuralRender):
 
     def render_field_slice(
         self,
-        device: torch.device,
         slice_t: float = 0.0,
         render_size: float = 1.1,
         render_resolution: int = 128,
     ) -> Dict[str, ndarray]:
+        """render field slice
+
+        Render slice image of field
+
+        Args:
+            slice_t (float): Parameter of slice position
+            render_size (float): Range of rendering
+            render_resolution (int): Resolution of rendering
+
+        Returns:
+            Dict[str, Tensor]: each type of fields.
+        """
         with torch.set_grad_enabled(False):
+            device = self.network_fine.device
             xs = (
                 torch.linspace(-render_size, render_size, render_resolution)
                 .to(device)
