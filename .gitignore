@@ -8,7 +8,7 @@ __pycache__
 .pytest_cache
 .venv
 nohup.out
-!data/test_metalball
+!data/bunny_smoke
 !data/README.md
 !models/README.md
 !outputs/README.md

@@ -18,7 +18,9 @@ from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
-LossFunctionType = Literal["ColorLoss", "MaskBCELoss", "FieldsConstraintLoss"]
+LossFunctionType = Literal[
+    "ColorLoss", "MaskBCELoss", "MaskMSELoss", "FieldsConstraintLoss"
+]
 
 
 class BaseTrainer(ABC):
@@ -130,11 +132,11 @@ class BaseTrainer(ABC):
             camera_id (int): Selected camera id
             downsampling (int): Step of downsampling(0 for full render)
         """
-        rgb = self.dataset[camera_id]["rgb_images"]
+        rgb_gt = self.dataset[camera_id]["rgb_images"].astype(np.uint8)
         camera = self.cameras[camera_id]
         camera.update_transform()
-        h: Final[int] = rgb.shape[0]
-        w: Final[int] = rgb.shape[1]
+        h: Final[int] = rgb_gt.shape[0]
+        w: Final[int] = rgb_gt.shape[1]
         target_types: List[RenderTarget] = ["color", "depth"]
 
         # render images with target_types "color" and "depth"
@@ -155,8 +157,6 @@ class BaseTrainer(ABC):
             .numpy()
             .astype(np.uint8)
         )
-
-        rgb_gt = self.dataset[camera_id]["rgb_images"]
 
         # output_pathes
         rgb_path: Path = output_dir / "{:03}_rgb.png".format(camera_id)
@@ -229,7 +229,7 @@ class BaseTrainer(ABC):
                 torch.from_numpy(rgb_gt_np).to(torch.float32).to(self.device)
             )
 
-        if "MaskBCELoss" in loss_types:
+        if "MaskBCELoss" in loss_types or "MaskMSELoss" in loss_types:
             mask = self.dataset[camera_id]["mask_images"]
             mask_gt_np: ndarray = (1.0 / 256) * np.stack(
                 [mask[v, u] for u, v in zip(us_int, vs_int)]
