@@ -12,6 +12,7 @@ class BaseLogger(ABC):
     """
 
     def __init__(self) -> None:
+        """Initializer configure common attributes."""
         self.loss: float = 0.0
         self.psnr: float = 0.0
         self.loss_dict: Dict[str, float] = {}
@@ -38,6 +39,8 @@ class BaseLogger(ABC):
         Args:
             loss (float): loss for the iteration
             psnr (float): PSNR for the iteration
+            loss_dict (Dict[str, Tensor]): other objective function's values for the iteration
+
         """
         self.loss = loss
         self.psnr = psnr

@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Final, List, Optional, Tuple
+from typing import Callable, Dict, Final, List, Literal, Optional, Tuple
 
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
@@ -15,17 +15,46 @@ from neddf.ray import Sampling
 from torch import Tensor, nn
 from torch.nn.functional import relu
 
+ActivationType = Literal["ReLU", "tanhExp"]
+
 
 class NeDDF(BaseNeuralField):
+    """NeDDF.
+
+    This class inheriting BaseNeuralField execute network inference.
+    The network archtecture is define in NeDDF paper.
+    (https://arxiv.org/abs/2207.14455)
+
+    Attributes:
+        skips (List[int]): Skip connection layer ids.
+        activation (Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]]):
+            Activation function with first order gradients.
+        pe_pos (PositionalEncodingGradLayer):
+            Layer of PE with first order gradients.
+        pe_dir (PositionalEncoding): Layer of PE.
+        layers_ddf (ModuleList): Layers for distance field network.
+        layers_col (ModuleList): Layers for color field network.
+        layer_ddf_out (LinearGradLayer): Output layer for distance.
+        layer_aux_out (LinearGradLayer): Output layer for aux. gradient.
+        layer_col_out (LinearGradLayer): Output layer for color.
+        d_near (float): minimal value of distance field.
+        aux_grad_scale (float):
+            Scale for aux. gradient.
+            It is configured in warmup.
+        lowpass_alpha (float): Coefficient of lowpass filter, used in warmup.
+        lowpass_alpha_offset (float): Offset of lowpass_alpha
+        penalty_weight (Dict[str, float]): Weights for field constraints penalty.
+    """
+
     def __init__(
         self,
-        embed_pos_rank: int = 6,
+        embed_pos_rank: int = 10,
         embed_dir_rank: int = 4,
         ddf_layer_count: int = 8,
         ddf_layer_width: int = 256,
         col_layer_count: int = 8,
         col_layer_width: int = 256,
-        activation_type: str = "tanhExp",
+        activation_type: ActivationType = "tanhExp",
         d_near: float = 0.01,
         lowpass_alpha_offset: float = 10.0,
         skips: Optional[List[int]] = None,
@@ -33,17 +62,23 @@ class NeDDF(BaseNeuralField):
     ) -> None:
         """Initializer
 
-        This method initialize NeuS module.
+        This method initialize NeDDF module.
 
         Args:
-            input_pos_dim (int): dimension of each imput positions
-            input_dir_dim (int): dimension of each imput directions
-            layer_count (int): count of layers
-            layer_width (int): dimension of hidden layers
-            activation_type (str): activation function
-            lowpass_alpha_init (float): offset of progressive training in lowpass
-                Set lowpass_alpha_offset=embed_pos_rank to disable.
-            skips (List[int]): skip connection layer index start with 0
+            embed_pos_rank (int): Rank for positional encoding of position.
+            embed_dir_rank (int): Rank for positional encoding of direction.
+            ddf_layer_count (int): count of layers of distance field.
+            ddf_layer_width (int): dimension of hidden layers of distance field.
+            col_layer_count (int): count of layers of color field.
+            col_layer_width (int): dimension of hidden layers of color field.
+            activation_type (ActivationType): Type of activation function.
+            d_near (float): Minimal value of distance field.
+            lowpass_alpha_offset (float):
+                Offset of progressive training in lowpass
+                Set lowpass_alpha_offset=embed_pos_rank to disable it.
+            skips (List[int]): skip connection layer index start with 0.
+            penalty_weight (Dict[str, float]):
+                Weights for field constraints penalty.
 
         """
         super().__init__()
@@ -70,10 +105,9 @@ class NeDDF(BaseNeuralField):
         ] = activation_types[activation_type]
 
         # create positional encoding layers
-        self.pe_pos_grad: PositionalEncodingGradLayer = PositionalEncodingGradLayer(
+        self.pe_pos: PositionalEncodingGradLayer = PositionalEncodingGradLayer(
             embed_pos_rank
         )
-        self.pe_pos: PositionalEncoding = PositionalEncoding(embed_pos_rank)
         self.pe_dir: PositionalEncoding = PositionalEncoding(embed_dir_rank)
 
         # create layers
@@ -117,15 +151,18 @@ class NeDDF(BaseNeuralField):
     ) -> Dict[str, Tensor]:
         """Forward propagation
 
-        This method take radiance field (density + color) with standard MLP.
+        This method take density-distance field (distance + density + color) with MLP.
 
         Args:
-            sampling (Sampling[batch_size, sampling, 3])
+            sampling (Sampling[batch_size, sampling, 3]): Input samplings
 
         Returns:
             Dict[str, Tensor]{
+                'distance' (Tensor[batch_size, 1, float32]): distance of each input
                 'density' (Tensor[batch_size, 1, float32]): density of each input
                 'color' (Tensor[batch_size, 3, float32]): rgb color of each input
+                'fields_penalty' (Tensor[batch_size, 1, float32]): penalty of field constraints
+                'aux_grad' (Tensor[batch_size, 1, float32]): aux. gradient of each input
             }
         """
         # if not self.training:
@@ -141,19 +178,19 @@ class NeDDF(BaseNeuralField):
             .expand(batch_size * sampling_size, -1, -1)
         )
         # scale PE with distance field to graditent becale same scale
-        pe_grad_scale: Tensor = self.pe_pos_grad.get_grad_scale().to(device)
+        pe_grad_scale: Tensor = self.pe_pos.get_grad_scale().to(device)
         # scale PE with lowpass
-        pe_lowpass_scale: Tensor = self.pe_pos_grad.get_lowpass_scale(
-            self.lowpass_alpha
-        ).to(device)
+        pe_lowpass_scale: Tensor = self.pe_pos.get_lowpass_scale(self.lowpass_alpha).to(
+            device
+        )
         # get weight of PE from sampling size
         pe_weights = sampling.get_pe_weights(self.pe_pos.freq).to(device)
-        embed_pos_scaled: Tuple[Tensor, Tensor] = self.pe_pos_grad(
+        embed_pos_scaled: Tuple[Tensor, Tensor] = self.pe_pos(
             sampling.sample_pos.reshape(-1, 3),
             sample_pos_grad,
             pe_grad_scale * pe_lowpass_scale * pe_weights,
         )
-        embed_pos: Tensor = self.pe_pos_grad(
+        embed_pos: Tensor = self.pe_pos(
             sampling.sample_pos.reshape(-1, 3),
             sample_pos_grad,
             pe_lowpass_scale * pe_weights,
@@ -267,5 +304,9 @@ class NeDDF(BaseNeuralField):
         Args:
             iter (int): current iteration. Set -1 for evaluation.
         """
-        self.aux_grad_scale = min(1.0, 0.0001 * iter)
-        self.lowpass_alpha = self.lowpass_alpha_offset + 0.001 * iter
+        if iter == -1:
+            self.aux_grad_scale = 1.0
+            self.lowpass_alpha = self.pe_pos.embed_dim
+        else:
+            self.aux_grad_scale = min(1.0, 0.0001 * iter)
+            self.lowpass_alpha = self.lowpass_alpha_offset + 0.001 * iter

@@ -16,6 +16,7 @@ class TestNeRFNetwork:
             layer_width=64,
             activation_type="ReLU",
             skips=[4],
+            lowpass_alpha_offset=10.0
         )
         assert hasattr(network, "pe_pos")
         assert hasattr(network, "pe_dir")

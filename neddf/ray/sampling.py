@@ -3,6 +3,16 @@ from torch import Tensor
 
 
 class Sampling:
+    """Sampling
+
+    This class hold sampling information to apply Cone or Sphere sampling in PE.
+
+    Attributes:
+        sample_pos (Tensor[batch_size, 3, float]): Sampling center position.
+        sample_dir (Tensor[batch_size, 3, float]): Sampling ray direction.
+        diag_variance (Tensor[batch_size, 3, float]): Diagonal of covariance matrix.
+    """
+
     def __init__(
         self,
         sample_pos: Tensor,
@@ -28,6 +38,7 @@ class Sampling:
 
     @property
     def device(self) -> torch.device:
+        """torch.device: device information(ex: cpu, cuda:0) of this instance"""
         return self.sample_pos.device
 
     def get_pe_weights(self, freq: Tensor) -> Tensor:
@@ -36,7 +47,10 @@ class Sampling:
         This method calculate weight for each frequency in Positional Encoding
 
         Args:
-            freq (Tensor[freq_dim]): frequency values for each pe channels
+            freq (Tensor[freq_dim]): Frequency values for each pe channels
+
+        Returns:
+            Tensor[sample_dim, freq_dim*3]: Weight for each frequency of PE.
         """
         with torch.set_grad_enabled(False):
             # count of sampling (batch_size * sample_size)

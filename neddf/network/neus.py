@@ -1,13 +1,32 @@
-from typing import Callable, Dict, Final, List, Optional
+from typing import Callable, Dict, Final, List, Literal, Optional
 
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
-from neddf.nn_module import PositionalEncoding
+from neddf.nn_module import PositionalEncoding, tanhExp
 from neddf.ray import Sampling
 from torch import Tensor, nn
 
+ActivationType = Literal["ReLU", "tanhExp"]
+
 
 class NeuS(BaseNeuralField):
+    """NeuS.
+
+    This class inheriting BaseNeuralField execute network inference.
+    The network archtecture is define in NeuS paper.
+    (https://arxiv.org/abs/2106.10689)
+
+    Attributes:
+        skips (List[int]): Skip connection layer ids.
+        activation (Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]]):
+            Activation function with first order gradients.
+        pe_pos (PositionalEncoding): Layer of position's PE.
+        pe_dir (PositionalEncoding): Layer of direction's PE.
+        layers_sdf (nn.ModuleList): Layers for distance field network.
+        layers_col (nn.ModuleList): Layers for color field network.
+        variance (nn.Parameter): Parameter of density variance
+    """
+
     def __init__(
         self,
         embed_pos_rank: int = 6,
@@ -25,12 +44,15 @@ class NeuS(BaseNeuralField):
         This method initialize NeuS module.
 
         Args:
-            input_pos_dim (int): dimension of each imput positions
-            input_dir_dim (int): dimension of each imput directions
-            layer_count (int): count of layers
-            layer_width (int): dimension of hidden layers
-            activation_type (str): activation function
-            skips (List[int]): skip connection layer index start with 0
+            embed_pos_rank (int): Rank for positional encoding of position.
+            embed_dir_rank (int): Rank for positional encoding of direction.
+            sdf_layer_count (int): count of layers of distance field.
+            sdf_layer_width (int): dimension of hidden layers of distance field.
+            col_layer_count (int): count of layers of color field.
+            col_layer_width (int): dimension of hidden layers of color field.
+            activation_type (ActivationType): Type of activation function.
+            init_variance (float): Initial variance for convert distance to density.
+            skips (List[int]): skip connection layer index start with 0.
 
         """
         super().__init__()
@@ -44,7 +66,8 @@ class NeuS(BaseNeuralField):
         self.skips = skips
 
         activation_types: Final[Dict[str, Callable[[Tensor], Tensor]]] = {
-            "ReLU": nn.ReLU()
+            "ReLU": nn.ReLU(),
+            "tanhExp": tanhExp.apply,
         }
 
         self.activation: Callable[[Tensor], Tensor] = activation_types[activation_type]
@@ -84,7 +107,7 @@ class NeuS(BaseNeuralField):
         This method take radiance field (density + color) with standard MLP.
 
         Args:
-            sampling (Sampling[batch_size, sampling, 3]):
+            sampling (Sampling[batch_size, sampling, 3]): Input samplings
 
         Returns:
             Dict[str, Tensor]{

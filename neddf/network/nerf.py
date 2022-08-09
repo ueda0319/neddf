@@ -1,21 +1,42 @@
-from typing import Callable, Dict, Final, List, Optional
+from typing import Callable, Dict, Final, List, Literal, Optional
 
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
-from neddf.nn_module import PositionalEncoding
+from neddf.nn_module import PositionalEncoding, tanhExp
 from neddf.ray import Sampling
 from torch import Tensor, nn
 
+ActivationType = Literal["ReLU", "tanhExp"]
+
 
 class NeRF(BaseNeuralField):
+    """NeRF.
+
+    This class inheriting BaseNeuralField execute network inference.
+    The network archtecture is define in NeRF paper.
+    (https://arxiv.org/abs/2003.08934)
+
+    Attributes:
+        skips (List[int]): Skip connection layer ids.
+        activation (Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]]):
+            Activation function with first order gradients.
+        pe_pos (PositionalEncoding): Layer of position's PE.
+        pe_dir (PositionalEncoding): Layer of direction's PE.
+        layers (ModuleList): Layers for radiance field network.
+        outL_density (nn.Linear): Output layer for density.
+        lowpass_alpha (float): Coefficient of lowpass filter, used in warmup.
+        lowpass_alpha_offset (float): Offset of lowpass_alpha
+    """
+
     def __init__(
         self,
         embed_pos_rank: int = 10,
         embed_dir_rank: int = 4,
         layer_count: int = 8,
         layer_width: int = 256,
-        activation_type: str = "ReLU",
+        activation_type: ActivationType = "ReLU",
         skips: Optional[List[int]] = None,
+        lowpass_alpha_offset: float = 10.0,
     ) -> None:
         """Initializer
 
@@ -28,6 +49,9 @@ class NeRF(BaseNeuralField):
             layer_width (int): dimension of hidden layers
             activation_type (str): activation function
             skips (List[int]): skip connection layer index start with 0
+            lowpass_alpha_offset (float):
+                Offset of progressive training in lowpass
+                Set lowpass_alpha_offset=embed_pos_rank to disable it.
 
         """
         super().__init__()
@@ -41,7 +65,8 @@ class NeRF(BaseNeuralField):
         self.skips = skips
 
         activation_types: Final[Dict[str, Callable[[Tensor], Tensor]]] = {
-            "ReLU": nn.ReLU()
+            "ReLU": nn.ReLU(),
+            "tanhExp": tanhExp.apply,
         }
 
         self.activation = activation_types[activation_type]
@@ -68,6 +93,8 @@ class NeRF(BaseNeuralField):
             nn.ReLU(),
             nn.Linear(layer_width // 2, 3),
         )
+        self.lowpass_alpha_offset: float = lowpass_alpha_offset
+        self.lowpass_alpha: float = lowpass_alpha_offset
 
     def forward(
         self,
@@ -78,7 +105,7 @@ class NeRF(BaseNeuralField):
         This method take radiance field (density + color) with standard MLP.
 
         Args:
-            sampling (Sampling[batch_size, sampling, 3])
+            sampling (Sampling[batch_size, sampling, 3]): Input samplings
         Returns:
             Dict[str, Tensor]{
                 'density' (Tensor[batch_size, 1, float32]): density of each input
@@ -97,28 +124,47 @@ class NeRF(BaseNeuralField):
                 (since it is possible to create M3 that reproduces M2 [M1 x, d] with M3[x, d])
 
         """
-        with torch.set_grad_enabled(self.training):
-            batch_size: Final[int] = sampling.sample_pos.shape[0]
-            sampling_size: Final[int] = sampling.sample_pos.shape[1]
+        batch_size: Final[int] = sampling.sample_pos.shape[0]
+        sampling_size: Final[int] = sampling.sample_pos.shape[1]
+        device: torch.device = sampling.sample_pos.device
 
-            pe_weights = sampling.get_pe_weights(self.pe_pos.freq)
-            embed_pos: Tensor = self.pe_pos(
-                sampling.sample_pos.reshape(-1, 3), pe_weights
-            )
-            embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
+        # scale PE with lowpass
+        pe_lowpass_scale: Tensor = self.pe_pos.get_lowpass_scale(self.lowpass_alpha).to(
+            device
+        )
+        # get weight of PE from sampling size
+        pe_weights = sampling.get_pe_weights(self.pe_pos.freq).to(device)
+        embed_pos: Tensor = self.pe_pos(
+            sampling.sample_pos.reshape(-1, 3),
+            pe_lowpass_scale * pe_weights,
+        )
+        embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
 
-            hx: Tensor = embed_pos
-            for layer_id, layer in enumerate(self.layers):
-                hx = self.activation(layer(hx))
-                if layer_id in self.skips:
-                    hx = torch.cat([hx, embed_pos], dim=1)
-            density = self.outL_density(hx)
+        hx: Tensor = embed_pos
+        for layer_id, layer in enumerate(self.layers):
+            hx = self.activation(layer(hx))
+            if layer_id in self.skips:
+                hx = torch.cat([hx, embed_pos], dim=1)
+        density = self.outL_density(hx)
 
-            dir_feature = torch.cat([hx, embed_dir], dim=1)
-            color = self.outL_color(dir_feature)
+        dir_feature = torch.cat([hx, embed_dir], dim=1)
+        color = self.outL_color(dir_feature)
 
-            output_dict: Dict[str, Tensor] = {
-                "density": density.reshape(batch_size, sampling_size),
-                "color": color.reshape(batch_size, sampling_size, 3),
-            }
+        output_dict: Dict[str, Tensor] = {
+            "density": density.reshape(batch_size, sampling_size),
+            "color": color.reshape(batch_size, sampling_size, 3),
+        }
         return output_dict
+
+    def set_iter(self, iter: int) -> None:
+        """Set iteration
+
+        This methods set iteration number for configure warm ups
+
+        Args:
+            iter (int): current iteration. Set -1 for evaluation.
+        """
+        if iter == -1:
+            self.lowpass_alpha = self.pe_pos.embed_dim
+        else:
+            self.lowpass_alpha = self.lowpass_alpha_offset + 0.001 * iter

@@ -4,5 +4,6 @@ embed_dir_rank: 4
 layer_count: 8
 layer_width: 256
 activation_type: "ReLU"
+lowpass_alpha_offset: 10
 skips:
   - 4

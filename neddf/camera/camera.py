@@ -26,7 +26,7 @@ class Camera(nn.Module):
         Args:
             camera_calib (BaseCameraCalib):
                 Camera calibration instance
-            initial_camera_param (np.ndarray[6, float]):
+            initial_camera_param (ndarray[6, float]):
                 SE(3) parameter of initial camera pose.
                 If not specified, zero vector is used.
         """
@@ -44,10 +44,12 @@ class Camera(nn.Module):
 
     @property
     def device(self) -> torch.device:
+        """torch.device: device information(ex: cpu, cuda:0) of this instance"""
         return self.params.device
 
     @property
     def R0(self) -> Tensor:
+        """Tensor[3, 3, float]: linearization origin of rotation matrix"""
         return torch.from_numpy(
             Rotation.from_rotvec(self.initial_params_np[:3])
             .as_matrix()
@@ -56,15 +58,15 @@ class Camera(nn.Module):
 
     @property
     def T0(self) -> Tensor:
+        """Tensor[3, float]: linearization origin of translation vector"""
         return torch.from_numpy(self.initial_params_np[3:6].astype(np.float32)).to(
             self.device
         )
 
-    # Calc Transform from camera parameters with gradients
     def update_transform(self) -> None:
         """Update transform
 
-        Update transform of the camera from parameters
+        Calc Transform from camera parameters with gradients
         Please call this method after update self.params
         """
         # Calculate rotation matrix from Rodrigues

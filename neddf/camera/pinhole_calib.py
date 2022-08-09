@@ -16,7 +16,7 @@ class PinholeCalib(BaseCameraCalib):
         and then calls the superclass initialization.
 
         Args:
-            calib_param (np.ndarray[4, float]): Camera intrisic parameters [fx, fy, cx, cy]
+            calib_param (ndarray[4, float]): Camera intrisic parameters [fx, fy, cx, cy]
         """
         assert calib_param.shape == (4,)
         super().__init__(calib_param)
@@ -75,16 +75,20 @@ class PinholeCalib(BaseCameraCalib):
 
     @property
     def fx(self) -> Tensor:
+        """Tensor[1, float]: horizontal focal length"""
         return self.params[0]
 
     @property
     def fy(self) -> Tensor:
+        """Tensor[1, float]: vertical focal length"""
         return self.params[1]
 
     @property
     def cx(self) -> Tensor:
+        """Tensor[1, float]: horizontal camera center position"""
         return self.params[2]
 
     @property
     def cy(self) -> Tensor:
+        """Tensor[1, float]: vertical camera center position"""
         return self.params[3]
