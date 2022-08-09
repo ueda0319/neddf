@@ -5,7 +5,7 @@ import hydra
 import numpy as np
 import torch
 from neddf.logger import NeRFTBLogger
-from neddf.trainer.base_trainer import BaseTrainer
+from neddf.trainer.base_trainer import BaseTrainer, LossFunctionType
 from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
@@ -23,6 +23,10 @@ class NeRFTrainer(BaseTrainer):
         self,
         **kwargs,
     ) -> None:
+        """Initializer
+
+        This method initialize NeRFTrainer class
+        """
         super().__init__(**kwargs)
         self.neural_render = hydra.utils.instantiate(
             self.config.render,
@@ -40,6 +44,10 @@ class NeRFTrainer(BaseTrainer):
         self.logger = NeRFTBLogger()
 
     def run_train(self) -> None:
+        """Run train
+
+        This method execute training
+        """
         # make directory in hydra's loggin directory for save models
         Path("models").mkdir(parents=True)
         render_dir: Path = Path("render")
@@ -70,6 +78,13 @@ class NeRFTrainer(BaseTrainer):
                 )
 
     def run_train_step(self, camera_id: int) -> float:
+        """Run train step
+
+        This method execute one step of training
+
+        Args:
+            camera_id (int): Selected camera index
+        """
         self.logger.write_batchstart()
 
         self.optimizer.zero_grad()
@@ -91,7 +106,9 @@ class NeRFTrainer(BaseTrainer):
 
         render_result: Dict[str, Tensor] = self.neural_render.render_rays(uv, camera)
 
-        loss_types: List[str] = [type(func).__name__ for func in self.loss_functions]
+        loss_types: List[LossFunctionType] = [
+            type(func).__name__ for func in self.loss_functions  # type: ignore
+        ]
         targets: Dict[str, Tensor] = self.construct_ground_truth(
             camera_id, us_int, vs_int, loss_types
         )

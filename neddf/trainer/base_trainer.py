@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Final, List
+from typing import Dict, Final, List, Literal
 
 import cv2
 import hydra
@@ -18,8 +18,12 @@ from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
+LossFunctionType = Literal["ColorLoss", "MaskBCELoss", "FieldsConstraintLoss"]
+
 
 class BaseTrainer(ABC):
+    """Abstract base class for Trainer."""
+
     config: DictConfig
     device: torch.device
     dataset: BaseDataset
@@ -55,6 +59,23 @@ class BaseTrainer(ABC):
         optimizer_lr: float = 0.0005,
         optimizer_weight_decay: float = 0.0,
     ) -> None:
+        """Initializer
+
+        This method initialize BaseTrainer module's common attributes.
+
+        Args:
+            global_config (DictConfig): Configuration data from hydra
+            device (str): device information(cpu, cuda:0, etc.)
+            batch_size (int): Batch size for training
+            chunk (int): Chunk size for rendering
+            epoch_max (int): Count of epoch for training
+            epoch_save_fields (int): Frequency of save fields
+            epoch_test_rendering (int): Frequency of test rendering
+            epoch_save_model (int): Frequency of save model parameters
+            scheduler_lr (float): Learning rate for scheduler
+            optimizer_lr (float): Learning rate for optimizer
+            optimizer_weight_decay (float): weight decay for optimizer
+        """
         super().__init__()
         # Keep Hydra config data
         self.config = global_config
@@ -90,11 +111,25 @@ class BaseTrainer(ABC):
         ]
 
     def load_pretrained_model(self, model_path: Path) -> None:
+        """Load pretrained model
+
+        Args:
+            model_path (Path): Path to model parameter file
+        """
         self.neural_render.load_state_dict(torch.load(str(model_path)))  # type: ignore
 
     def render_test(
         self, output_dir: Path, camera_id: int, downsampling: int = 1
     ) -> None:
+        """Render test
+
+        This method render image
+
+        Args:
+            output_dir (Path): Path to save directory
+            camera_id (int): Selected camera id
+            downsampling (int): Step of downsampling(0 for full render)
+        """
         rgb = self.dataset[camera_id]["rgb_images"]
         camera = self.cameras[camera_id]
         camera.update_transform()
@@ -139,12 +174,27 @@ class BaseTrainer(ABC):
             print("psnr: {}, ssim: {}".format(psnr, ssim))
 
     def render_all(self, output_dir: Path) -> None:
+        """Render from all camera
+
+        This method render image from all cameras
+
+        Args:
+            output_dir (Path): Path to save directory
+        """
         frame_length: Final[int] = len(self.dataset)
         for camera_id in range(frame_length):
             print("rendering from camera {}".format(camera_id))
             self.render_test(output_dir, camera_id, 1)
 
     def render_field_slices(self, output_field_dir: Path, epoch: int = 0) -> None:
+        """Render field slices
+
+        This method visualize field by slice
+
+        Args:
+            output_dir (Path): Path to save directory
+            epoch (int): Current epoch for filename
+        """
         images: Dict[str, ndarray] = self.neural_render.render_field_slice()
         for key in images:
             write_path: Path = output_field_dir / "field_{}_{:04}.png".format(
@@ -153,8 +203,22 @@ class BaseTrainer(ABC):
             cv2.imwrite(str(write_path), images[key])
 
     def construct_ground_truth(
-        self, camera_id: int, us_int: Tensor, vs_int: Tensor, loss_types: List[str]
+        self,
+        camera_id: int,
+        us_int: Tensor,
+        vs_int: Tensor,
+        loss_types: List[LossFunctionType],
     ) -> Dict[str, Tensor]:
+        """Construct ground truth
+
+        This method construct target values for use loss
+
+        Args:
+            camera_id (int): Selected camera index
+            us_int (Tensor[batch_size, int]): Vertical pixel position of rays
+            vs_int (Tensor[batch_size, int]): Horizontal pixel position of rays
+            loss_types (List[LossFunctionType]): Selected loss functions
+        """
         targets: Dict[str, Tensor] = {}
         if "ColorLoss" in loss_types:
             rgb = self.dataset[camera_id]["rgb_images"]
@@ -181,8 +245,19 @@ class BaseTrainer(ABC):
 
     @abstractmethod
     def run_train(self) -> None:
+        """Run train
+
+        This method execute training
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def run_train_step(self, camera_id: int) -> float:
+        """Run train step
+
+        This method execute one step of training
+
+        Args:
+            camera_id (int): Selected camera index
+        """
         raise NotImplementedError()
