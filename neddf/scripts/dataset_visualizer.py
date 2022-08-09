@@ -251,7 +251,7 @@ class Visualizer:
                 [0.0, 1.0],
                 [1.0, 1.0],
             ]
-            rgb_orig: ndarray = data["rgb_images"]
+            rgb_orig: ndarray = data["rgb_images"].astype(np.uint8)
             # flip up to down and convert BGR to RGB
             rgb: ndarray = np.flip(np.flipud(rgb_orig), axis=2).copy()
 
@@ -261,7 +261,6 @@ class Visualizer:
             image_panel.compute_vertex_normals()
             image_panel.triangle_uvs = o3d.open3d.utility.Vector2dVector(face_uv)
             image_panel.triangle_material_ids = o3d.utility.IntVector([0] * len(faces))
-            # image_panel.textures = [o3d.geometry.Image(rgb)]
 
             transform: ndarray = np.eye(4)
             transform[:3, :3] = Rotation.from_rotvec(camera_param[:3]).as_matrix()
@@ -379,7 +378,7 @@ class Visualizer:
             )
 
 
-@hydra.main(config_path="../../config", config_name="default")
+@hydra.main(config_path="../../config", config_name="config")
 def main(cfg: DictConfig) -> None:
     cwd: Final[Path] = Path(hydra.utils.get_original_cwd())
     cfg.dataset.dataset_dir = str(cwd / cfg.dataset.dataset_dir)

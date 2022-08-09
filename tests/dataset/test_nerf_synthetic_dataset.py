@@ -16,7 +16,7 @@ class TestNeRFSyntheticDataset:
             config_dir=conf_dir.as_posix()
         )
         cls.cfg: DictConfig = hydra.compose(
-            config_name="default", overrides=["dataset=test"]
+            config_name="config", overrides=["dataset=test"]
         )
 
     @classmethod

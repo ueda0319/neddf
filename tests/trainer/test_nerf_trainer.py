@@ -17,7 +17,7 @@ class TestNeRFTrainer:
             config_dir=conf_dir.as_posix()
         )
         cfg: DictConfig = hydra.compose(
-            config_name="default", overrides=["dataset=test", "trainer=test"]
+            config_name="config", overrides=["dataset=test", "trainer=test"]
         )
         trainer: BaseTrainer = hydra.utils.instantiate(
             cfg.trainer,

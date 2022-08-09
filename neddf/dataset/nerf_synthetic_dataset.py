@@ -65,7 +65,12 @@ class NeRFSyntheticDataset(BaseDataset):
             # Get image
             img_path: Path = self.dataset_dir / (frame["file_path"] + ".png")
             img: ndarray = cv2.imread(img_path.as_posix(), cv2.IMREAD_UNCHANGED)
-            rgb_images.append(img[:, :, :3])
+            rgb = (
+                (1.0 / 256)
+                * img[:, :, 3, None].astype(np.float32)
+                * img[:, :, :3].astype(np.float32)
+            )
+            rgb_images.append(rgb)
             mask_images.append(img[:, :, 3])
 
         self.camera_calib_params: ndarray = np.array([focal, focal, 0.5 * w, 0.5 * h])

@@ -1,6 +1,0 @@
-defaults:
-  - dataset: nerf_synthetic
-  - render: nerf_render
-  - network: nerf
-  - trainer: default
-  - loss: nerf_loss
