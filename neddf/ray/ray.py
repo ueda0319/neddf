@@ -6,12 +6,39 @@ from torch import Tensor
 
 
 class Ray:
+    """Ray
+
+    This class hold rays information which can make up samples
+
+    Attributes:
+        single (bool): Batchidied or not.
+        ray_dir (Tensor[batch_size, 3, float] or Tensor[3, float]):
+            Ray Direction vectors.
+        ray_orig (Tensor[batch_size, 3, float] or Tensor[3, float]):
+            Ray origin(camera position).
+        uv (Tensor[batch_size, 2, float] or Tensor[2, float]):
+            Position in 2D pixel coordinate.
+    """
+
     def __init__(
         self,
         ray_dir: Tensor,
         ray_orig: Tensor,
         uv: Tensor,
     ) -> None:
+        """Initializer
+
+        This method initialize LinearGradLayer module.
+
+        Args:
+            ray_dir (Tensor[batch_size, 3, float] or Tensor[3, float]):
+                Ray Direction vectors.
+            ray_orig (Tensor[batch_size, 3, float] or Tensor[3, float]):
+                Ray origin(camera position).
+            uv (Tensor[batch_size, 2, float] or Tensor[2, float]):
+                Position in 2D pixel coordinate.
+
+        """
         self.single: Final[bool] = ray_dir.dim() == 1
         # validation for data shapes
         assert ray_orig.shape == ray_dir.shape
@@ -30,12 +57,29 @@ class Ray:
         return self.ray_dir.device
 
     def __len__(self) -> int:
+        """Special method called in len(self)
+
+        Get count of rays(batchsize)
+        """
         if self.single:
             return 1
 
         return self.ray_dir.shape[0]
 
     def __getitem__(self, item: int) -> Tuple[Tensor, Tensor]:
+        """Special method called in self[item]
+
+        Get item in selected index
+
+        Args:
+            item (int): index of item
+
+        Returns:
+            Tuple[
+                Tensor[3, float]: Ray direction
+                Tensor[3, float]: Ray origin position
+            ]
+        """
         if self.single:
             return (self.ray_dir, self.ray_orig)
 
