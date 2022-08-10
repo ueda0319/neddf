@@ -1,3 +1,3 @@
 _target_: neddf.dataset.NeRFSyntheticDataset
-dataset_dir: "data/nerf_synthetic/lego/"
+dataset_dir: "data/bunny_smoke/"
 data_split: "train"
