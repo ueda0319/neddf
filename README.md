@@ -60,11 +60,16 @@ Rendering results are saved to `outputs/{datatime}/render/`, images rendered fro
 
 Run
 ```bash
-$ poetry run python neddf/scripts/run.py {pretrained files directory}
+$ poetry run python neddf/scripts/run_eval.py {pretrained files directory}
+```
+
+For example, use following commands to evaluate neddf model in bunny_smoke scene.
+```bash
+$ poetry run python neddf/scripts/run_eval.py pretrained/bunny_smoke/
 ```
 
 ## Visualize for check dataset
 To visualize dataset, please run following command (override of dataset config is optional):
 ```bash
-$ poetry run python neddf/scripts/dataset_visualizer.py dataset=${DATASET_NAME}
+$ poetry run python neddf/scripts/dataset_visualizer.py dataset.dataset_dir=data/bunny_smoke/
 ```
