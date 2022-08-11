@@ -1,5 +1,5 @@
 defaults:
-  - dataset: nerf_synthetic
+  - dataset: bunny_smoke
   - render: neddf_render
   - network: neddf
   - trainer: neddf_trainer
