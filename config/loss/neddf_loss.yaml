@@ -1,4 +1,4 @@
 functions:
 - {_target_: neddf.loss.ColorLoss, weight: 1.0, weight_coarse: 0.1}
-- {_target_: neddf.loss.MaskMSELoss, weight: 0.05, weight_coarse: 0.005}
-- {_target_: neddf.loss.FieldsConstraintLoss, weight: 0.01, weight_coarse: 0.001}
+- {_target_: neddf.loss.MaskBCELoss, weight: 0.05, weight_coarse: 0.005}
+- {_target_: neddf.loss.FieldsConstraintLoss, weight: 0.01, weight_coarse: 0.01}

@@ -1,6 +1,6 @@
 _target_: neddf.trainer.NeRFTrainer
 device: "cuda:0"
-batch_size: 128
+batch_size: 512
 chunk: 1024
 epoch_max: 2000
 epoch_save_fields: 2

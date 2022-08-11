@@ -10,7 +10,7 @@ activation_type: "tanhExp"
 lowpass_alpha_offset: 10
 penalty_weight:
   constraints_aux_grad: 0.05
-  constraints_dDdt: 0.5
+  constraints_dDdt: 1.0
   constraints_color: 0.0001
   range_distance: 1.0
   range_aux_grad: 1.0

@@ -133,6 +133,7 @@ class NeDDF(BaseNeuralField):
 
         self.d_near: float = d_near
         self.aux_grad_scale: float = 1.0
+        self.distance_range_max: float = 2.0
         self.lowpass_alpha_offset: float = lowpass_alpha_offset
         self.lowpass_alpha: float = lowpass_alpha_offset
         if penalty_weight is None:
@@ -260,9 +261,9 @@ class NeDDF(BaseNeuralField):
 
         # penalty for values which over ranges
         # note that sigmoid(-4.6) and softplus(-4.6) is simillar to 0.01
-        # -4.6 < (distance before softplus) < 1.0
+        # -4.6 < (distance before softplus) < 2.0
         penalties["range_distance"] = torch.square(
-            relu(-4.6 - ddf_out) + relu(-1.0 + ddf_out)
+            relu(-4.6 - ddf_out) + relu(-self.distance_range_max + ddf_out)
         )
         # -4.6 < (aux_grad before softplus) < 4.6
         penalties["range_aux_grad"] = torch.square(
@@ -306,7 +307,9 @@ class NeDDF(BaseNeuralField):
         """
         if iter == -1:
             self.aux_grad_scale = 1.0
+            self.distance_range_max = 2.0
             self.lowpass_alpha = self.pe_pos.embed_dim
         else:
-            self.aux_grad_scale = min(1.0, 0.0001 * iter)
+            self.aux_grad_scale = min(1.0, max(0.01, 0.0001 * iter))
+            self.distance_range_max = min(2.0, 0.5 + 0.0001 * iter)
             self.lowpass_alpha = self.lowpass_alpha_offset + 0.001 * iter
