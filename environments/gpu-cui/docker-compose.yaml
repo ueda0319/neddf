@@ -5,7 +5,6 @@ services:
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      - DISPLAY=unix${DISPLAY}
     build:
       args:
         - BASE_IMAGE=nvidia/cuda:11.1.1-devel-ubuntu20.04
@@ -16,8 +15,6 @@ services:
     tty: true
     volumes:
         - ../../:/home/challenger/neddf
-        - /tmp/.X11-unix:/tmp/.X11-unix
-        - $HOME/.Xauthority:/root/.Xauthority
     ports:
         - 8000:8000
         - 6006:6006
