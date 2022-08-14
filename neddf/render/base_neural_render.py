@@ -137,12 +137,11 @@ class BaseNeuralRender(ABC, nn.Module):
             Dict[str, Tensor]:
                 <weight> Tensor[batch_size, float]
                 <depth> Tensor[batch_size, float]
-                <depth_var> Tensor[batch_size, float]
                 <color> Tensor[batch_size, 3, float]
                 <transmittance> Tensor[batch_size, float]
         """
         batch_size: Final[int] = dists.shape[0]
-        sampling_step: Final[int] = dists.shape[1]
+        # sampling_step: Final[int] = dists.shape[1]
 
         device: Final[torch.device] = dists.device
         deltas = dists[:, 1:] - dists[:, :-1]
@@ -158,14 +157,6 @@ class BaseNeuralRender(ABC, nn.Module):
         ih = w.reshape(batch_size, -1, 1).expand(batch_size, -1, 3) * colors[:, :-1, :]
         d = torch.sum(dh, dim=1)
         i = torch.sum(ih, dim=1)
-        dv = torch.sum(
-            w
-            * torch.square(
-                dists[:, :-1]
-                - d.reshape(batch_size, 1).expand(batch_size, sampling_step - 1)
-            ),
-            dim=1,
-        )
 
         # Black background
         d += t[:, -1] * self.max_dist
@@ -174,7 +165,6 @@ class BaseNeuralRender(ABC, nn.Module):
         result = {
             "weight": w,
             "depth": d,
-            "depth_var": dv,
             "color": i,
             "transmittance": t[:, -1],
         }

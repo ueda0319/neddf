@@ -34,7 +34,7 @@ class LeakyReLUGradFunction(torch.autograd.Function):
 
         """
         scale = torch.ones_like(x)
-        scale[(x<0)] = 0.01
+        scale[(x < 0)] = 0.01
         y = x * scale
         G = J * scale.unsqueeze(1)
         ctx.save_for_backward(scale)  # type: ignore
