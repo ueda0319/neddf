@@ -147,7 +147,7 @@ class NeRFRender(BaseNeuralRender):
                     dim=1,
                 )
 
-        with torch.no_grad():  # type: ignore
+        with torch.set_grad_enabled(False):
             dists_fine: Tensor = self.sample_pdf(
                 dists_coarse,
                 integrate_coarse["weight"],

@@ -76,7 +76,7 @@ class PositionalEncoding(nn.Module):
         Returns:
             Tensor[1, freq*embed_dim, float32]: embed features
         """
-        with torch.no_grad():  # type: ignore
+        with torch.set_grad_enabled(False):
             if alpha >= self.embed_dim:
                 return torch.ones(1, self.embed_dim * input_dim)
             scale: Tensor = torch.ones(self.embed_dim)

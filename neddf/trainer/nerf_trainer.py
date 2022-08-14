@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 from typing import Dict, Final, List
 
@@ -120,7 +121,12 @@ class NeRFTrainer(BaseTrainer):
 
         loss.backward()  # type: ignore
         loss_float = float(loss.item())
-        self.logger.write(loss_float, 1.0, loss_dict)
+
+        mse: float = float(
+            torch.mean(torch.square(render_result["color"] - targets["color"])).item()
+        )
+        psnr = 10 * math.log10(1.0 / mse)
+        self.logger.write(loss_float, psnr, loss_dict)
 
         del loss
         del loss_dict

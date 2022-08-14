@@ -1,12 +1,13 @@
 import torch
 from torch import Tensor
 
-from neddf.nn_module.with_grad import ReLUGradFunction, SoftplusGradFunction, TanhExpGradFunction
+from neddf.nn_module.with_grad import LeakyReLUGradFunction, ReLUGradFunction, SoftplusGradFunction, TanhExpGradFunction
 
 
 class TestActivationss:
     def test_activations(self):
         target_activations = [
+            LeakyReLUGradFunction.apply,
             ReLUGradFunction.apply, 
             SoftplusGradFunction.apply,
             TanhExpGradFunction.apply,

@@ -62,7 +62,6 @@ class Sampling:
                 self.diag_variance[:, :, None, :]
                 .expand(-1, -1, freq.shape[0], -1)
                 .reshape(sample_dim, -1)
-                .to(freq.device)
             )
             freq_sq = (
                 torch.square(freq)[None, :, None]

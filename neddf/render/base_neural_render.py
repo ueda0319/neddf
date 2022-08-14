@@ -5,7 +5,6 @@ import torch
 from neddf.camera import Camera
 from numpy import ndarray
 from torch import Tensor, nn
-from torch.nn.functional import relu
 
 RenderTarget = Literal["color", "depth", "transmittance"]
 
@@ -50,7 +49,7 @@ class BaseNeuralRender(ABC, nn.Module):
                 cat_coarse is True, and [batch_size, samples_fine] other
         """
         if torch.any(torch.isnan(weights)) or torch.any(weights < 0.0):
-            print("sample_pdf: Invalid weight detected.")
+            # print("sample_pdf: Invalid weight detected.")
             weights[weights < 0.0] *= 0.0
             weights[torch.isnan(weights)] = 0.0
 
@@ -148,7 +147,7 @@ class BaseNeuralRender(ABC, nn.Module):
         device: Final[torch.device] = dists.device
         deltas = dists[:, 1:] - dists[:, :-1]
 
-        o = 1 - torch.exp(-relu(densities[:, :-1]) * deltas)
+        o = 1 - torch.exp(-densities[:, :-1] * deltas)
         t = torch.cumprod(
             torch.cat([torch.ones((o.shape[0], 1)).to(device), 1.0 - o + 1e-7], 1), 1
         )

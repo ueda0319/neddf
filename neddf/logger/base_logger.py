@@ -61,7 +61,6 @@ class BaseLogger(ABC):
             "loss": self.loss,
             "PSNR": self.psnr,
             "iteration duration": self.batchend - self.batchstart,
-            "dataload duration": self.batchstart - self.prev_batchend,
             "total duration": self.batchend - self.loggerstart,
         }
         for key in self.loss_dict:

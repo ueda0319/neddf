@@ -2,8 +2,9 @@ from typing import Callable, Dict, Final, List, Literal, Optional, Tuple
 
 import torch
 from neddf.network.base_neuralfield import BaseNeuralField
-from neddf.nn_module import PositionalEncoding
+from neddf.nn_module import PositionalEncoding, tanhExp
 from neddf.nn_module.with_grad import (
+    LeakyReLUGradFunction,
     LinearGradLayer,
     PositionalEncodingGradLayer,
     ReLUGradFunction,
@@ -13,9 +14,9 @@ from neddf.nn_module.with_grad import (
 )
 from neddf.ray import Sampling
 from torch import Tensor, nn
-from torch.nn.functional import relu
+from torch.nn.functional import leaky_relu, relu
 
-ActivationType = Literal["ReLU", "tanhExp"]
+ActivationType = Literal["LeakyReLU", "ReLU", "tanhExp"]
 
 
 class NeDDF(BaseNeuralField):
@@ -28,7 +29,9 @@ class NeDDF(BaseNeuralField):
     Attributes:
         skips (List[int]): Skip connection layer ids.
         activation (Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]]):
-            Activation function with first order gradients.
+            Activation function with first order gradients for hidden layers.
+        density_activation (Callable[Tensor, Tensor]):
+            Activation function for density output layer.
         pe_pos (PositionalEncodingGradLayer):
             Layer of PE with first order gradients.
         pe_dir (PositionalEncoding): Layer of PE.
@@ -55,6 +58,7 @@ class NeDDF(BaseNeuralField):
         col_layer_count: int = 8,
         col_layer_width: int = 256,
         activation_type: ActivationType = "tanhExp",
+        density_activation_type: ActivationType = "ReLU",
         d_near: float = 0.01,
         lowpass_alpha_offset: float = 10.0,
         skips: Optional[List[int]] = None,
@@ -93,16 +97,25 @@ class NeDDF(BaseNeuralField):
             skips = [4]
         self.skips = skips
 
-        activation_types: Final[
+        activation_types_with_grad: Final[
             Dict[str, Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]]]
         ] = {
+            "LeakyReLU": LeakyReLUGradFunction.apply,
             "ReLU": ReLUGradFunction.apply,
             "tanhExp": TanhExpGradFunction.apply,
+        }
+        activation_types: Final[Dict[str, Callable[[Tensor], Tensor]]] = {
+            "LeakyReLU": leaky_relu,
+            "ReLU": relu,
+            "tanhExp": tanhExp.apply,
         }
 
         self.activation: Callable[
             [Tensor, Tensor], Tuple[Tensor, Tensor]
-        ] = activation_types[activation_type]
+        ] = activation_types_with_grad[activation_type]
+        self.density_activation: Callable[[Tensor], Tensor] = activation_types[
+            density_activation_type
+        ]
 
         # create positional encoding layers
         self.pe_pos: PositionalEncodingGradLayer = PositionalEncodingGradLayer(
@@ -114,7 +127,7 @@ class NeDDF(BaseNeuralField):
         layers_ddf: List[nn.Module] = []
         layers_col: List[nn.Module] = []
         layers_ddf.append(LinearGradLayer(input_ddf_dim, ddf_layer_width))
-        for layer_id in range(ddf_layer_count - 1):
+        for layer_id in range(ddf_layer_count - 2):
             if layer_id in skips:
                 layers_ddf.append(
                     LinearGradLayer(ddf_layer_width + input_ddf_dim, ddf_layer_width)
@@ -122,7 +135,7 @@ class NeDDF(BaseNeuralField):
             else:
                 layers_ddf.append(LinearGradLayer(ddf_layer_width, ddf_layer_width))
         layers_col.append(LinearGradLayer(input_col_dim, col_layer_width))
-        for _ in range(col_layer_count - 1):
+        for _ in range(col_layer_count - 2):
             layers_col.append(LinearGradLayer(col_layer_width, col_layer_width))
         # Set layers as optimization targets
         self.layers_ddf = nn.ModuleList(layers_ddf)
@@ -132,7 +145,7 @@ class NeDDF(BaseNeuralField):
         self.layer_col_out = LinearGradLayer(ddf_layer_width, 3)
 
         self.d_near: float = d_near
-        self.aux_grad_scale: float = 1.0
+        self.aux_grad_scale: float = 1.1
         self.distance_range_max: float = 2.0
         self.lowpass_alpha_offset: float = lowpass_alpha_offset
         self.lowpass_alpha: float = lowpass_alpha_offset
@@ -166,8 +179,6 @@ class NeDDF(BaseNeuralField):
                 'aux_grad' (Tensor[batch_size, 1, float32]): aux. gradient of each input
             }
         """
-        # if not self.training:
-        #     return self.forward_eval(sampling)
         batch_size: Final[int] = sampling.sample_pos.shape[0]
         sampling_size: Final[int] = sampling.sample_pos.shape[1]
         device: torch.device = sampling.sample_pos.device
@@ -185,18 +196,18 @@ class NeDDF(BaseNeuralField):
             device
         )
         # get weight of PE from sampling size
-        pe_weights = sampling.get_pe_weights(self.pe_pos.freq).to(device)
+        pe_weights = sampling.get_pe_weights(self.pe_pos.freq.to(device))
         embed_pos_scaled: Tuple[Tensor, Tensor] = self.pe_pos(
-            sampling.sample_pos.reshape(-1, 3),
+            sampling.sample_pos.view(-1, 3),
             sample_pos_grad,
             pe_grad_scale * pe_lowpass_scale * pe_weights,
         )
         embed_pos: Tensor = self.pe_pos(
-            sampling.sample_pos.reshape(-1, 3),
+            sampling.sample_pos.view(-1, 3),
             sample_pos_grad,
             pe_lowpass_scale * pe_weights,
         )
-        embed_dir: Tensor = self.pe_dir(sampling.sample_dir.reshape(-1, 3))
+        embed_dir: Tensor = self.pe_dir(sampling.sample_dir.view(-1, 3))
 
         hx: Tensor = embed_pos_scaled[0]
         hJ: Tensor = embed_pos_scaled[1]
@@ -204,8 +215,8 @@ class NeDDF(BaseNeuralField):
             hx, hJ = layer(hx, hJ)
             hx, hJ = self.activation(hx, hJ)
             if layer_id in self.skips:
-                hx = torch.cat([hx, embed_pos_scaled[0]], dim=1)
-                hJ = torch.cat([hJ, embed_pos_scaled[1]], dim=2)
+                hx = torch.cat([embed_pos_scaled[0], hx], dim=1)
+                hJ = torch.cat([embed_pos_scaled[1], hJ], dim=2)
         ddf_out, ddf_outJ = self.layer_ddf_out(hx, hJ)
         distance_tuple = SoftplusGradFunction.apply(ddf_out, ddf_outJ)
         distance: Tensor = distance_tuple[0] + self.d_near
@@ -226,7 +237,7 @@ class NeDDF(BaseNeuralField):
         # calculate density from nabla_distance and inverse distance
         dDdt: Tensor = torch.norm(nabla_distance, dim=1)[:, None]  # type: ignore
         distance_inv: Tensor = torch.reciprocal(distance)
-        density: Tensor = distance_inv * (1 - dDdt)
+        density: Tensor = self.density_activation(distance_inv * (1 - dDdt))
         norm_dir = torch.reciprocal(distance_grad_norm + 1e-7) * distance_grad
 
         hx = torch.cat([embed_pos[0], embed_dir, norm_dir.detach(), features], dim=1)
@@ -289,11 +300,11 @@ class NeDDF(BaseNeuralField):
         fields_penalty = torch.sum(torch.stack(list(penalties.values()), dim=2), dim=2)
 
         output_dict: Dict[str, Tensor] = {
-            "distance": distance.reshape(batch_size, sampling_size),
-            "density": density.reshape(batch_size, sampling_size),
-            "color": color.reshape(batch_size, sampling_size, 3),
-            "fields_penalty": fields_penalty.reshape(batch_size, sampling_size),
-            "aux_grad": aux_grad.reshape(batch_size, sampling_size),
+            "distance": distance.view(batch_size, sampling_size),
+            "density": density.view(batch_size, sampling_size),
+            "color": color.view(batch_size, sampling_size, 3),
+            "fields_penalty": fields_penalty.view(batch_size, sampling_size),
+            "aux_grad": aux_grad.view(batch_size, sampling_size),
         }
         return output_dict
 
@@ -306,10 +317,10 @@ class NeDDF(BaseNeuralField):
             iter (int): current iteration. Set -1 for evaluation.
         """
         if iter == -1:
-            self.aux_grad_scale = 1.0
+            self.aux_grad_scale = 1.1
             self.distance_range_max = 2.0
             self.lowpass_alpha = self.pe_pos.embed_dim
         else:
-            self.aux_grad_scale = min(1.0, max(0.01, 0.0001 * iter))
-            self.distance_range_max = min(2.0, 0.5 + 0.0001 * iter)
+            self.aux_grad_scale = min(1.1, max(0.01, 0.0001 * iter))
+            self.distance_range_max = min(2.0, 2.0 + 0.0001 * iter)
             self.lowpass_alpha = self.lowpass_alpha_offset + 0.001 * iter

@@ -151,11 +151,11 @@ class Ray:
         sample_count: int = dists.shape[1]
         assert batch_size == self.ray_dir.shape[0]
 
-        sample_orig: Tensor = self.ray_orig.unsqueeze(1).expand(
-            batch_size, sample_count, 3
+        sample_orig: Tensor = (
+            self.ray_orig.unsqueeze(1).expand(batch_size, sample_count, 3).contiguous()
         )
-        sample_dir: Tensor = self.ray_dir.unsqueeze(1).expand(
-            batch_size, sample_count, 3
+        sample_dir: Tensor = (
+            self.ray_dir.unsqueeze(1).expand(batch_size, sample_count, 3).contiguous()
         )
         dists_near = dists
         dists_far = torch.cat(

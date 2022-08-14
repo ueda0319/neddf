@@ -16,12 +16,16 @@ class BaseDataset(ABC, Dataset):
         rgb_images (ndarray[bs, h, w, 3, uint8]): rgb images
         mask_images (ndarray[bs, h, w, uint8]): mask images
         depth_images (ndarray[bs, h, w, uint8]): depth images
+        use_depth (bool): True when dataset includes depth datas
+        use_mask (bool): True when dataset includes mask datas
     """
 
     def __init__(
         self,
         dataset_dir: str,
         data_split: str,
+        use_depth: bool = False,
+        use_mask: bool = False,
     ) -> None:
         """Initializer
 
@@ -40,6 +44,8 @@ class BaseDataset(ABC, Dataset):
         self.rgb_images: ndarray = np.zeros(0)
         self.mask_images: ndarray = np.zeros(0)
         self.depth_images: ndarray = np.zeros(0)
+        self.use_depth: bool = use_depth
+        self.use_mask: bool = use_mask
 
         self.load_data()
 
