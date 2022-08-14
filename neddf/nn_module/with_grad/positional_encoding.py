@@ -59,6 +59,7 @@ class PositionalEncodingGradLayer(nn.Module):
                 batch_size,
                 self.embed_dim * input_dim,
                 dtype=torch.float32,
+                device=x.device,
             )
 
         freq: Tensor = self.freq.reshape(-1, 1).to(x.device)
@@ -71,7 +72,7 @@ class PositionalEncodingGradLayer(nn.Module):
             .reshape(batch_size, input_dim, self.embed_dim * input_dim)
         )
 
-        scale_y = scale.expand_as(p).to(x.device)
+        scale_y = scale.expand_as(p)
         scale_G = (
             freq.unsqueeze(0).expand(input_dim, -1, input_dim).reshape(1, input_dim, -1)
             * scale_y.unsqueeze(1)
@@ -127,7 +128,7 @@ class PositionalEncodingGradLayer(nn.Module):
             Tensor[1, freq*embed_dim, float32]: embed features
         """
         return (
-            torch.reciprocal(2.0 * self.freq)
+            torch.reciprocal(0.5 * self.freq)
             .unsqueeze(1)
             .expand(-1, input_dim)
             .reshape(1, -1)
@@ -145,7 +146,7 @@ class PositionalEncodingGradLayer(nn.Module):
         Returns:
             Tensor[1, freq*embed_dim, float32]: embed features
         """
-        with torch.no_grad():  # type: ignore
+        with torch.set_grad_enabled(False):
             if alpha >= self.embed_dim:
                 return torch.ones(1, self.embed_dim * input_dim)
             scale: Tensor = torch.ones(self.embed_dim)

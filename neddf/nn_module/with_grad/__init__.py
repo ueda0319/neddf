@@ -1,3 +1,4 @@
+from neddf.nn_module.with_grad.leaky_relu import LeakyReLUGradFunction  # noqa
 from neddf.nn_module.with_grad.linear import LinearGradFunction, LinearGradLayer  # noqa
 from neddf.nn_module.with_grad.positional_encoding import (  # noqa
     PositionalEncodingGradLayer,

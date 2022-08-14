@@ -182,6 +182,7 @@ class BaseTrainer(ABC):
             output_dir (Path): Path to save directory
         """
         frame_length: Final[int] = len(self.dataset)
+        self.neural_render.set_iter(-1)
         for camera_id in range(frame_length):
             print("rendering from camera {}".format(camera_id))
             self.render_test(output_dir, camera_id, 1)

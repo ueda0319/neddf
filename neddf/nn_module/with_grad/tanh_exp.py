@@ -49,7 +49,8 @@ class TanhExpGradFunction(torch.autograd.Function):
 
         d2x = ex * (-x + 2 * ex * x * tx - 2) * (tx ** 2 - 1)
         d2x[mask] = 0.0
-        ctx.save_for_backward(d2x, J, dydx, dGdJ, mask)  # type: ignore
+        dGdx = J * d2x.unsqueeze(1)
+        ctx.save_for_backward(dydx, dGdx, dGdJ)  # type: ignore
         return y, G
 
     @staticmethod
@@ -68,10 +69,9 @@ class TanhExpGradFunction(torch.autograd.Function):
             dLdG (Tensor[batch_size, 3, input_ch, float]): gradients of output features
 
         Contexts:
-            d2x (Tensor[batch_size, input_ch, bool])
-            J (Tensor[batch_size, 3, input_ch, bool])
-            dGgJ (Tensor[batch_size, 3, input_ch, bool])
-            mask (Tensor[batch_size, input_ch, bool])
+            dydx (Tensor[batch_size, input_ch, bool])
+            dGdx (Tensor[batch_size, 3, input_ch, bool])
+            dGdJ (Tensor[batch_size, 3, input_ch, bool])
 
         Returns:
             Tuple[
@@ -81,9 +81,8 @@ class TanhExpGradFunction(torch.autograd.Function):
             ]
 
         """
-        d2x, J, dydx, dGdJ, mask = ctx.saved_tensors  # type: ignore
-        dGdx = d2x * torch.sum(J * dLdG, 1)
-        dLdx = dLdy * dydx + dGdx
+        dydx, dGdx, dGdJ = ctx.saved_tensors  # type: ignore
+        dLdx = dLdy * dydx + torch.sum(dLdG * dGdx, 1)
         dLdJ = dLdG * dGdJ
 
         return dLdx, dLdJ, None

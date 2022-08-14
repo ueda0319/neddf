@@ -2,6 +2,8 @@ dataset:
   _target_: neddf.dataset.NeRFSyntheticDataset
   dataset_dir: data/bunny_smoke/
   data_split: train
+  use_depth: False
+  use_mask: True
 render:
   _target_: neddf.render.NeRFRender
   sample_coarse: 64
@@ -21,6 +23,7 @@ network:
   col_layer_width: 256
   d_near: 0.001
   activation_type: tanhExp
+  density_activation_type: "LeakyReLU"
   lowpass_alpha_offset: 10
   penalty_weight:
     constraints_aux_grad: 0.05

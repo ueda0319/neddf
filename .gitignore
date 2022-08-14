@@ -2,6 +2,7 @@ data/*
 models/*
 outputs/*
 log/*
+pretrained/*
 __pycache__
 .coverage
 .mypy_cache
@@ -9,6 +10,7 @@ __pycache__
 .venv
 nohup.out
 !data/bunny_smoke
+!pretrained/bunny_smoke
 !data/README.md
 !models/README.md
 !outputs/README.md

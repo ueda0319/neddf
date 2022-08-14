@@ -2,7 +2,7 @@
 
 ### [Project Page](https://ueda0319.github.io/neddf/) | [arXiv](https://arxiv.org/abs/2207.14455)
 
-PyTorch implementation of Neural Distance-Density Field (NeDDF), a 3D representation that reciprocally constrains the distance and density fields (CODE COMING SOON).
+PyTorch implementation of Neural Distance-Density Field (NeDDF), a 3D representation that reciprocally constrains the distance and density fields.
 
 [Neural Density-Distance Fields](http://tancik.com/nerf)  
 [Itsuki Ueda](https://sites.google.com/image.iit.tsukuba.ac.jp/itsukiueda)<sup>1</sup>,
@@ -22,6 +22,9 @@ in ECCV 2022(poster)
 - nvidia-docker2
 
 ## How to setup docker container
+
+This repository is based on [Ascender project](https://github.com/cvpaperchallenge/Ascender).
+Please refer to Ascender for detailed instructions on how to set up the host environment.
 
 ```
 ## Move to the directory where docker-compose.yaml exists.
@@ -67,6 +70,8 @@ For example, use following commands to evaluate neddf model in bunny_smoke scene
 ```bash
 $ poetry run python neddf/scripts/run_eval.py pretrained/bunny_smoke/
 ```
+
+You can download pretrained models of nerf_synthetic_dataset from [this link](https://drive.google.com/file/d/1YJnky8bye0WU-_yZbC0DCiF0rm-36s57/view?usp=sharing)
 
 ## Visualize for check dataset
 To visualize dataset, please run following command (override of dataset config is optional):

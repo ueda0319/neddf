@@ -5,8 +5,9 @@ from neddf.network.base_neuralfield import BaseNeuralField
 from neddf.nn_module import PositionalEncoding, tanhExp
 from neddf.ray import Sampling
 from torch import Tensor, nn
+from torch.nn.functional import leaky_relu, relu
 
-ActivationType = Literal["ReLU", "tanhExp"]
+ActivationType = Literal["LeakyReLU", "ReLU", "tanhExp"]
 
 
 class NeRF(BaseNeuralField):
@@ -19,7 +20,9 @@ class NeRF(BaseNeuralField):
     Attributes:
         skips (List[int]): Skip connection layer ids.
         activation (Callable[[Tensor, Tensor], Tuple[Tensor, Tensor]]):
-            Activation function with first order gradients.
+            Activation function for hidden layers.
+        density_activation (Callable[[Tensor], Tensor]):
+            Activation function for density output layer.
         pe_pos (PositionalEncoding): Layer of position's PE.
         pe_dir (PositionalEncoding): Layer of direction's PE.
         layers (ModuleList): Layers for radiance field network.
@@ -35,6 +38,7 @@ class NeRF(BaseNeuralField):
         layer_count: int = 8,
         layer_width: int = 256,
         activation_type: ActivationType = "ReLU",
+        density_activation_type: ActivationType = "ReLU",
         skips: Optional[List[int]] = None,
         lowpass_alpha_offset: float = 10.0,
     ) -> None:
@@ -65,11 +69,15 @@ class NeRF(BaseNeuralField):
         self.skips = skips
 
         activation_types: Final[Dict[str, Callable[[Tensor], Tensor]]] = {
-            "ReLU": nn.ReLU(),
+            "LeakyReLU": leaky_relu,
+            "ReLU": relu,
             "tanhExp": tanhExp.apply,
         }
 
         self.activation = activation_types[activation_type]
+        self.density_activation: Callable[[Tensor], Tensor] = activation_types[
+            density_activation_type
+        ]
 
         # create positional encoding layers
         self.pe_pos: PositionalEncoding = PositionalEncoding(embed_pos_rank)
@@ -145,7 +153,7 @@ class NeRF(BaseNeuralField):
             hx = self.activation(layer(hx))
             if layer_id in self.skips:
                 hx = torch.cat([hx, embed_pos], dim=1)
-        density = self.outL_density(hx)
+        density = self.density_activation(self.outL_density(hx))
 
         dir_feature = torch.cat([hx, embed_dir], dim=1)
         color = self.outL_color(dir_feature)
