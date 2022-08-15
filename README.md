@@ -78,7 +78,12 @@ To visualize trained distance, density, aux.gradient and color fields, please ru
 ```bash
 $ poetry run python neddf/scripts/fields_visualizer.py {pretrained files directory}
 ```
-This visualizer draw fields by 2D slices.
+This visualizer draw fields by 2D slices. Following video is visualization example in lego scene(`pretrained/lego`)
+
+
+https://user-images.githubusercontent.com/26667016/184594202-77d88d06-b92c-46fc-8f8e-b54586e200b3.mp4
+
+
 
 ## Visualize for check dataset
 To visualize dataset, please run following command (override of dataset config is optional):
