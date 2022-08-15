@@ -1,0 +1,10 @@
+_target_: neddf.network.NeRF
+embed_pos_rank: 10
+embed_dir_rank: 4
+layer_count: 8
+layer_width: 256
+activation_type: "ReLU"
+density_activation_type: "ReLU"
+lowpass_alpha_offset: 10
+skips:
+  - 4

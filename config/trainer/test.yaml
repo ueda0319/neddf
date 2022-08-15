@@ -1,0 +1,11 @@
+_target_: neddf.trainer.NeRFTrainer
+device: "cpu"
+batch_size: 32
+chunk: 32
+epoch_max: 1
+epoch_save_fields: 2
+epoch_test_rendering: 10
+epoch_save_model: 100
+scheduler_lr: 0.99815
+optimizer_lr: 0.0005
+optimizer_weight_decay: 0.0

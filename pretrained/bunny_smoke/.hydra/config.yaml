@@ -1,0 +1,59 @@
+dataset:
+  _target_: neddf.dataset.NeRFSyntheticDataset
+  dataset_dir: data/bunny_smoke/
+  data_split: train
+  use_depth: False
+  use_mask: True
+render:
+  _target_: neddf.render.NeRFRender
+  sample_coarse: 64
+  sample_fine: 128
+  dist_near: 2.0
+  dist_far: 6.0
+  max_dist: 6.0
+  use_coarse_network: false
+  sampling_type: cone
+network:
+  _target_: neddf.network.NeDDF
+  embed_pos_rank: 10
+  embed_dir_rank: 4
+  ddf_layer_count: 8
+  ddf_layer_width: 256
+  col_layer_count: 4
+  col_layer_width: 256
+  d_near: 0.001
+  activation_type: tanhExp
+  density_activation_type: "LeakyReLU"
+  lowpass_alpha_offset: 10
+  penalty_weight:
+    constraints_aux_grad: 0.05
+    constraints_dDdt: 0.5
+    constraints_color: 0.0001
+    range_distance: 1.0
+    range_aux_grad: 1.0
+    range_color: 0.1
+  skips:
+  - 4
+trainer:
+  _target_: neddf.trainer.NeRFTrainer
+  device: cuda:0
+  batch_size: 128
+  chunk: 1024
+  epoch_max: 2000
+  epoch_save_fields: 2
+  epoch_test_rendering: 10
+  epoch_save_model: 100
+  scheduler_lr: 0.99815
+  optimizer_lr: 0.001
+  optimizer_weight_decay: 0.0
+loss:
+  functions:
+  - _target_: neddf.loss.ColorLoss
+    weight: 1.0
+    weight_coarse: 0.1
+  - _target_: neddf.loss.MaskMSELoss
+    weight: 0.05
+    weight_coarse: 0.005
+  - _target_: neddf.loss.FieldsConstraintLoss
+    weight: 0.01
+    weight_coarse: 0.001

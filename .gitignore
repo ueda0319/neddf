@@ -1,11 +1,16 @@
 data/*
 models/*
 outputs/*
+log/*
+pretrained/*
 __pycache__
 .coverage
 .mypy_cache
 .pytest_cache
 .venv
+nohup.out
+!data/bunny_smoke
+!pretrained/bunny_smoke
 !data/README.md
 !models/README.md
 !outputs/README.md

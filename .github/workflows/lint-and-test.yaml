@@ -1,0 +1,27 @@
+name: Lint and test
+on: [pull_request]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Install Poetry
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry==1.2.0b3 poetry-core==1.1.0b3
+      - name: Install Packages
+        run: |
+          poetry install
+      - name: Run Lint
+        run: |
+          poetry run pysen run lint
+      - name: Run Test
+        run: |
+          poetry run pytest

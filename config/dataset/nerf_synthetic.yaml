@@ -1,0 +1,5 @@
+_target_: neddf.dataset.NeRFSyntheticDataset
+dataset_dir: "data/nerf_synthetic/lego/"
+data_split: "train"
+use_depth: False
+use_mask: True
