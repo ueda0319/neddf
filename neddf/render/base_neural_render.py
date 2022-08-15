@@ -3,6 +3,7 @@ from typing import Any, Dict, Final, Iterable, List, Literal
 
 import torch
 from neddf.camera import Camera
+from neddf.network import BaseNeuralField
 from numpy import ndarray
 from torch import Tensor, nn
 
@@ -248,6 +249,17 @@ class BaseNeuralRender(ABC, nn.Module):
 
         Returns:
             Dict[str, Tensor]: each type of fields.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_network(self) -> BaseNeuralField:
+        """get network model
+
+        Get mainly network model.
+
+        Returns:
+            BaseNeuralField: network model
         """
         raise NotImplementedError()
 

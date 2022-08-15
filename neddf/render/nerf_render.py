@@ -80,6 +80,17 @@ class NeRFRender(BaseNeuralRender):
         self.max_dist: Final[float] = max_dist
         self.sampling_type: SamplingType = sampling_type
 
+    def get_network(self) -> BaseNeuralField:
+        """get network model
+
+        Get mainly network model.
+        In NeRF Render, this method return network_fine
+
+        Returns:
+            BaseNeuralField: network model
+        """
+        return self.network_fine
+
     def get_parameters_list(self) -> List[Any]:
         """get parameters list
 
