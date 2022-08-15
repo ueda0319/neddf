@@ -1,16 +1,14 @@
 from argparse import ArgumentParser
-import os
 from pathlib import Path
 from typing import Dict, Final, List
 
 import hydra
-from hydra.core.global_hydra import GlobalHydra
-from neddf.trainer import BaseTrainer
-from omegaconf import DictConfig
 import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
 import open3d.visualization.rendering as rendering
+from hydra.core.global_hydra import GlobalHydra
+from neddf.trainer import BaseTrainer
 from numpy import ndarray
 from omegaconf import DictConfig
 from open3d.visualization.rendering import MaterialRecord
@@ -89,7 +87,9 @@ class FieldsVisualizer:
         slice_field_name_combo.add_item("density")
         slice_field_name_combo.add_item("color")
         slice_field_name_combo.add_item("aux_grad")
-        slice_field_name_combo.set_on_selection_changed(self._on_slice_fieldname_selection)
+        slice_field_name_combo.set_on_selection_changed(
+            self._on_slice_fieldname_selection
+        )
         slice_param_slider = gui.Slider(gui.Slider.DOUBLE)
         slice_param_slider.set_limits(-1.0, 1.0)
         slice_param_slider.double_value = self.slice_parameter
@@ -202,18 +202,20 @@ class FieldsVisualizer:
 
     def draw_coordinate_grid(self) -> None:
         # draw axis arrows
-        #coordinate_axis = o3d.geometry.TriangleMesh.create_coordinate_frame()
-        #self.scene.scene.add_geometry(
+        # coordinate_axis = o3d.geometry.TriangleMesh.create_coordinate_frame()
+        # self.scene.scene.add_geometry(
         #    "coordinate_axis", coordinate_axis, self.default_material
-        #)
+        # )
 
         # draw coordinate grid
         grid_range: int = 3
         x_line_vtx = [
-            [[-float(grid_range), float(i), 0.0], [float(grid_range), float(i), 0.0]] for i in range(-grid_range, grid_range+1)
+            [[-float(grid_range), float(i), 0.0], [float(grid_range), float(i), 0.0]]
+            for i in range(-grid_range, grid_range + 1)
         ]
         y_line_vtx = [
-            [[float(i), -float(grid_range), 0.0], [float(i), float(grid_range), 0.0]] for i in range(-grid_range, grid_range+1)
+            [[float(i), -float(grid_range), 0.0], [float(i), float(grid_range), 0.0]]
+            for i in range(-grid_range, grid_range + 1)
         ]
         vtx: ndarray = np.array(x_line_vtx + y_line_vtx).reshape(-1, 3)
         edges: List[List[int]] = [[i * 2, i * 2 + 1] for i in range(22)]
@@ -261,17 +263,14 @@ class FieldsVisualizer:
         bounding_box.colors = o3d.utility.Vector3dVector(colors)
         self.scene.scene.add_geometry("bounding_box", bounding_box, self.line_material)
 
-    def draw_field_slice(
-        self, 
-        slice_size: float = 1.1
-    ) -> None:
+    def draw_field_slice(self, slice_size: float = 1.1) -> None:
         slice_t = self.slice_parameter
-        slice_images: Dict[str, ndarray] = self.trainer.neural_render.render_field_slice(
-            slice_t = slice_t,
-            render_size = 1.1,
-            render_resolution=128
+        slice_images: Dict[
+            str, ndarray
+        ] = self.trainer.neural_render.render_field_slice(
+            slice_t=slice_t, render_size=1.1, render_resolution=128
         )
-        
+
         vtx: List[List[float]] = [
             [-slice_size, slice_size, slice_t],
             [slice_size, slice_size, slice_t],
@@ -304,17 +303,18 @@ class FieldsVisualizer:
         material.shader = "defaultUnlit"
         material.albedo_img = o3d.geometry.Image(rgb)
 
-        self.scene.scene.add_geometry(
-            "slice_plane", image_panel, material
-        )
-
+        self.scene.scene.add_geometry("slice_plane", image_panel, material)
 
     def draw_camera_img(self, f: float = 0.5) -> None:
         for idx, data in enumerate(self.trainer.dataset):  # type: ignore
             camera_calib_param: ndarray = data["camera_calib_params"]
             camera_param: ndarray = data["camera_params"]
-            tx: float = f * 0.5 * self.trainer.dataset.image_width / camera_calib_param[0]
-            ty: float = f * 0.5 * self.trainer.dataset.image_height / camera_calib_param[1]
+            tx: float = (
+                f * 0.5 * self.trainer.dataset.image_width / camera_calib_param[0]
+            )
+            ty: float = (
+                f * 0.5 * self.trainer.dataset.image_height / camera_calib_param[1]
+            )
             vtx: List[List[float]] = [
                 [-tx, ty, -f],
                 [tx, ty, -f],
@@ -361,8 +361,12 @@ class FieldsVisualizer:
         for idx, data in enumerate(self.trainer.dataset):  # type: ignore
             camera_calib_param: ndarray = data["camera_calib_params"]
             camera_param: ndarray = data["camera_params"]
-            tx: float = f * 0.5 * self.trainer.dataset.image_width / camera_calib_param[0]
-            ty: float = f * 0.5 * self.trainer.dataset.image_height / camera_calib_param[1]
+            tx: float = (
+                f * 0.5 * self.trainer.dataset.image_width / camera_calib_param[0]
+            )
+            ty: float = (
+                f * 0.5 * self.trainer.dataset.image_height / camera_calib_param[1]
+            )
             vtx: List[List[float]] = [
                 [0.0, 0.0, 0.0],
                 [-tx, ty, -f],
@@ -461,7 +465,7 @@ class FieldsVisualizer:
 
 
 def main() -> None:
-        # parse arguments
+    # parse arguments
     parser: ArgumentParser = ArgumentParser()
     parser.add_argument(
         "output_dir",
@@ -477,9 +481,7 @@ def main() -> None:
     assert conf_dir.is_dir()
     GlobalHydra.instance().clear()
     hydra.initialize_config_dir(config_dir=conf_dir.as_posix())
-    cfg: DictConfig = hydra.compose(
-        config_name="config"
-    )
+    cfg: DictConfig = hydra.compose(config_name="config")
     trainer: BaseTrainer = hydra.utils.instantiate(
         cfg.trainer,
         global_config=cfg,
