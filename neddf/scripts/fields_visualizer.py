@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Final, List
 
 import hydra
+import mcubes
 import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
@@ -16,7 +17,7 @@ from scipy.spatial.transform import Rotation
 
 
 class FieldsVisualizer:
-    def __init__(self, trainer: BaseTrainer) -> None:
+    def __init__(self, trainer: BaseTrainer, output_dir: Path) -> None:
         # Member variables to operate with gui
         self.show_rgb_image: bool = False
         self.show_bounding_box: bool = False
@@ -31,6 +32,11 @@ class FieldsVisualizer:
         self.visible_range: ndarray = np.array([4.0, 6.0])
         self.slice_parameter: float = 0.0
         self.slice_field_name: str = "distance"
+        self.output_dir: Path = output_dir
+        self.meshed_field: o3d.geometry.TriangleMesh
+        self.meshing_resolution: int = 64
+        self.meshing_threshold: float = 0.0275
+        self.generate_mesh()
 
         # Constant member variables
         self.trainer: Final[BaseTrainer] = trainer
@@ -42,10 +48,13 @@ class FieldsVisualizer:
         self.thin_line_material: Final[MaterialRecord] = MaterialRecord()
         self.thin_line_material.shader = "unlitLine"
         self.thin_line_material.line_width = 1
+        self.meshed_field_material: Final[MaterialRecord] = MaterialRecord()
+        self.meshed_field_material.shader = "defaultLitTransparency"
+        self.meshed_field_material.base_color = [0.467, 0.467, 0.467, 0.7]
 
         # Window
         w: gui.Window = gui.Application.instance.create_window(
-            "neddf Fields Visualizer", 640, 480
+            "neddf Fields Visualizer", 1280, 768
         )
         # Scene 3D viewer panel
         scene = gui.SceneWidget()
@@ -112,12 +121,31 @@ class FieldsVisualizer:
         visible_range_layout.add_child(visible_range_near_slider)
         visible_range_layout.add_child(visible_range_far_slider)
 
+        # Meshing
+        meshing_button_layout = gui.Vert()
+        meshing_resolution = gui.NumberEdit(gui.NumberEdit.Type.INT)
+        meshing_resolution.set_value(64)
+        meshing_resolution.set_limits(8, 256)
+        meshing_resolution.set_on_value_changed(self._on_meshing_resolution)
+        meshing_threshold = gui.NumberEdit(gui.NumberEdit.Type.DOUBLE)
+        meshing_threshold.set_value(0.0275)
+        meshing_threshold.set_limits(0.001, 50.0)
+        meshing_threshold.set_on_value_changed(self._on_meshing_threshold)
+        meshing_button = gui.Button("Generate mesh model")
+        meshing_button.set_on_clicked(self._on_meshing)
+        meshing_button_layout.add_stretch()
+        meshing_button_layout.add_child(gui.Label("Marching cube resolution"))
+        meshing_button_layout.add_child(meshing_resolution)
+        meshing_button_layout.add_child(gui.Label("Marching cube threshold"))
+        meshing_button_layout.add_child(meshing_threshold)
+        meshing_button_layout.add_child(meshing_button)
+
         # Refresh button
-        button_layout = gui.Vert()
+        refresh_button_layout = gui.Vert()
         refresh_button = gui.Button("Refresh render")
         refresh_button.set_on_clicked(self._on_refresh_render)
-        button_layout.add_stretch()
-        button_layout.add_child(refresh_button)
+        refresh_button_layout.add_stretch()
+        refresh_button_layout.add_child(refresh_button)
 
         # Add setting layouts to setting_panels
         separation_height = int(round(0.5 * em))
@@ -128,7 +156,9 @@ class FieldsVisualizer:
         settings_panel.add_fixed(separation_height)
         settings_panel.add_child(visible_range_layout)
         settings_panel.add_fixed(separation_height)
-        settings_panel.add_child(button_layout)
+        settings_panel.add_child(meshing_button_layout)
+        settings_panel.add_fixed(separation_height)
+        settings_panel.add_child(refresh_button_layout)
 
         w.set_on_layout(self._on_layout)
         w.add_child(scene)
@@ -179,6 +209,16 @@ class FieldsVisualizer:
         # every time the slide bar moves would be slow.
         # self.refresh_render()
 
+    def _on_meshing_resolution(self, new_val: float) -> None:
+        self.meshing_resolution = int(new_val)
+
+    def _on_meshing_threshold(self, new_val: float) -> None:
+        self.meshing_threshold = new_val
+
+    def _on_meshing(self) -> None:
+        self.generate_mesh()
+        self.refresh_render()
+
     def _on_layout(self, layout_context: gui.Widget) -> None:
         r = self.window.content_rect
         self.scene.frame = r
@@ -193,6 +233,7 @@ class FieldsVisualizer:
         self.draw_coordinate_grid()
         self.draw_camera_pyramid()
         self.draw_field_slice()
+        self.draw_meshed_field()
         if self.show_rgb_image:
             self.draw_camera_img()
         if self.show_bounding_box:
@@ -357,6 +398,14 @@ class FieldsVisualizer:
                 "camera_{}_rgb".format(idx), image_panel, material
             )
 
+    def draw_meshed_field(self) -> None:
+        material: MaterialRecord = MaterialRecord()
+        material.shader = "defaultUnlit"
+
+        self.scene.scene.add_geometry(
+            "meshed_field", self.meshed_field, self.meshed_field_material
+        )
+
     def draw_camera_pyramid(self, f: float = 0.5) -> None:
         for idx, data in enumerate(self.trainer.dataset):  # type: ignore
             camera_calib_param: ndarray = data["camera_calib_params"]
@@ -463,6 +512,46 @@ class FieldsVisualizer:
                 "camera_{}_visible_range".format(idx), lines, self.thin_line_material
             )
 
+    def generate_mesh(self) -> None:
+        cube_range: float = 1.1
+        mesh_dir: Path = self.output_dir / "mesh"
+        mesh_dir.mkdir(exist_ok=True)
+        voxel_file_path: Path = mesh_dir / "voxel_{}.npy".format(
+            self.meshing_resolution
+        )
+        if voxel_file_path.exists():
+            voxel: ndarray = np.load(voxel_file_path.as_posix())
+        else:
+            voxel = self.trainer.neural_render.get_network().voxelize(
+                field_name="distance",
+                cube_range=cube_range,
+                cube_resolution=self.meshing_resolution,
+            )
+            np.save(voxel_file_path.as_posix(), voxel)
+
+        vertices, triangles = mcubes.marching_cubes(voxel, self.meshing_threshold)
+        vertices -= self.meshing_resolution / 2.0
+        vertices *= 2.0 * cube_range / self.meshing_resolution
+        vertices_list = np.asarray(vertices)
+        triangles_list = np.asarray(triangles)
+        self.meshed_field = o3d.geometry.TriangleMesh(
+            o3d.utility.Vector3dVector(vertices_list),
+            o3d.utility.Vector3iVector(triangles_list),
+        )
+        self.meshed_field.compute_vertex_normals()
+
+        transform: ndarray = np.zeros((4, 4))
+        transform[0, 2] = -1
+        transform[1, 0] = -1
+        transform[2, 1] = 1
+        transform[3, 3] = 1
+        self.meshed_field.transform(transform)
+
+        # mesh_file_path: Path = mesh_dir / "mesh_{}_threshold{}.dae".format(
+        #     cube_resolution, threshold
+        # )
+        # mcubes.export_mesh(vertices, triangles, mesh_file_path.as_posix, "mcube")
+
 
 def main() -> None:
     # parse arguments
@@ -498,7 +587,7 @@ def main() -> None:
     save_dir.mkdir(exist_ok=True)
 
     gui.Application.instance.initialize()
-    FieldsVisualizer(trainer)
+    FieldsVisualizer(trainer, output_dir)
     # Run the event loop
     gui.Application.instance.run()
 
