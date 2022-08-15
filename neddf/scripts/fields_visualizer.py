@@ -29,6 +29,7 @@ class FieldsVisualizer:
                 [-1.0, 1.0],  # Z-axis
             ]
         )
+        self.trainer: Final[BaseTrainer] = trainer
         self.visible_range: ndarray = np.array([4.0, 6.0])
         self.slice_parameter: float = 0.0
         self.slice_field_name: str = "distance"
@@ -39,7 +40,6 @@ class FieldsVisualizer:
         self.generate_mesh()
 
         # Constant member variables
-        self.trainer: Final[BaseTrainer] = trainer
         self.default_material: Final[MaterialRecord] = MaterialRecord()
         self.default_material.shader = "defaultUnlit"
         self.line_material: Final[MaterialRecord] = MaterialRecord()
@@ -323,12 +323,12 @@ class FieldsVisualizer:
             [0, 3, 2],  # outside
         ]
         face_uv: List[List[float]] = [
-            [1.0, 1.0],
-            [1.0, 0.0],
-            [0.0, 0.0],
-            [0.0, 0.0],
             [0.0, 1.0],
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [1.0, 0.0],
             [1.0, 1.0],
+            [0.0, 1.0],
         ]
         # flip up to down and convert BGR to RGB
         rgb: ndarray = np.flip(slice_images[self.slice_field_name], axis=2).copy()
