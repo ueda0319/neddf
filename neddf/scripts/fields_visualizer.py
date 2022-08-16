@@ -547,10 +547,10 @@ class FieldsVisualizer:
         transform[3, 3] = 1
         self.meshed_field.transform(transform)
 
-        # mesh_file_path: Path = mesh_dir / "mesh_{}_threshold{}.dae".format(
-        #     cube_resolution, threshold
-        # )
-        # mcubes.export_mesh(vertices, triangles, mesh_file_path.as_posix, "mcube")
+        mesh_file_path: Path = mesh_dir / "mesh_{}_threshold{}.dae".format(
+            self.meshing_resolution, self.meshing_threshold
+        )
+        mcubes.export_mesh(vertices, triangles, mesh_file_path.as_posix(), "mcube")
 
 
 def main() -> None:
