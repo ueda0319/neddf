@@ -76,7 +76,7 @@ class FieldsVisualizer:
         show_option_layout = gui.CollapsableVert(
             "Visible options", 0, gui.Margins(em, 0, 0, 0)
         )
-        show_option_layout.set_is_open(False)
+        show_option_layout.set_is_open(True)
         show_rgb_checkbox = gui.Checkbox("show rgb images")
         show_rgb_checkbox.checked = self.show_rgb_image
         show_rgb_checkbox.set_on_checked(self._on_show_rgb_image)
@@ -96,7 +96,7 @@ class FieldsVisualizer:
         slice_param_layout = gui.CollapsableVert(
             "Field Slice parameters", 0, gui.Margins(em, 0, 0, 0)
         )
-        slice_param_layout.set_is_open(False)
+        slice_param_layout.set_is_open(True)
         slice_field_name_combo = gui.Combobox()
         slice_field_name_combo.add_item("distance")
         slice_field_name_combo.add_item("density")
@@ -135,7 +135,7 @@ class FieldsVisualizer:
         meshing_button_layout = gui.CollapsableVert(
             "Meshing options", 0, gui.Margins(em, 0, 0, 0)
         )
-        meshing_button_layout.set_is_open(False)
+        meshing_button_layout.set_is_open(True)
         meshing_resolution = gui.NumberEdit(gui.NumberEdit.Type.INT)
         meshing_resolution.set_value(64)
         meshing_resolution.set_limits(8, 256)
