@@ -73,7 +73,10 @@ class FieldsVisualizer:
         self.window: Final[gui.Window] = w
 
         # Viwer options
-        show_option_layout = gui.Vert()
+        show_option_layout = gui.CollapsableVert(
+            "Visible options", 0, gui.Margins(em, 0, 0, 0)
+        )
+        show_option_layout.set_is_open(True)
         show_rgb_checkbox = gui.Checkbox("show rgb images")
         show_rgb_checkbox.checked = self.show_rgb_image
         show_rgb_checkbox.set_on_checked(self._on_show_rgb_image)
@@ -90,7 +93,10 @@ class FieldsVisualizer:
         show_option_layout.add_child(show_visible_range_checkbox)
 
         # Slice parameter
-        slice_param_layout = gui.Vert()
+        slice_param_layout = gui.CollapsableVert(
+            "Field Slice parameters", 0, gui.Margins(em, 0, 0, 0)
+        )
+        slice_param_layout.set_is_open(True)
         slice_field_name_combo = gui.Combobox()
         slice_field_name_combo.add_item("distance")
         slice_field_name_combo.add_item("density")
@@ -109,7 +115,10 @@ class FieldsVisualizer:
         slice_param_layout.add_child(slice_param_slider)
 
         # Visible range options
-        visible_range_layout = gui.Vert()
+        visible_range_layout = gui.CollapsableVert(
+            "Camera Visible Ranges", 0, gui.Margins(em, 0, 0, 0)
+        )
+        visible_range_layout.set_is_open(False)
         visible_range_near_slider = gui.Slider(gui.Slider.DOUBLE)
         visible_range_near_slider.set_limits(1.0, 8.0)
         visible_range_near_slider.double_value = self.visible_range[0]
@@ -122,7 +131,11 @@ class FieldsVisualizer:
         visible_range_layout.add_child(visible_range_far_slider)
 
         # Meshing
-        meshing_button_layout = gui.Vert()
+        # meshing_button_layout = gui.Vert()
+        meshing_button_layout = gui.CollapsableVert(
+            "Meshing options", 0, gui.Margins(em, 0, 0, 0)
+        )
+        meshing_button_layout.set_is_open(True)
         meshing_resolution = gui.NumberEdit(gui.NumberEdit.Type.INT)
         meshing_resolution.set_value(64)
         meshing_resolution.set_limits(8, 256)
@@ -141,11 +154,11 @@ class FieldsVisualizer:
         meshing_button_layout.add_child(meshing_button)
 
         # Refresh button
-        refresh_button_layout = gui.Vert()
-        refresh_button = gui.Button("Refresh render")
-        refresh_button.set_on_clicked(self._on_refresh_render)
-        refresh_button_layout.add_stretch()
-        refresh_button_layout.add_child(refresh_button)
+        # refresh_button_layout = gui.Vert()
+        # refresh_button = gui.Button("Refresh render")
+        # refresh_button.set_on_clicked(self._on_refresh_render)
+        # refresh_button_layout.add_stretch()
+        # refresh_button_layout.add_child(refresh_button)
 
         # Add setting layouts to setting_panels
         separation_height = int(round(0.5 * em))
@@ -157,8 +170,8 @@ class FieldsVisualizer:
         settings_panel.add_child(visible_range_layout)
         settings_panel.add_fixed(separation_height)
         settings_panel.add_child(meshing_button_layout)
-        settings_panel.add_fixed(separation_height)
-        settings_panel.add_child(refresh_button_layout)
+        # settings_panel.add_fixed(separation_height)
+        # settings_panel.add_child(refresh_button_layout)
 
         w.set_on_layout(self._on_layout)
         w.add_child(scene)
@@ -547,10 +560,10 @@ class FieldsVisualizer:
         transform[3, 3] = 1
         self.meshed_field.transform(transform)
 
-        # mesh_file_path: Path = mesh_dir / "mesh_{}_threshold{}.dae".format(
-        #     cube_resolution, threshold
-        # )
-        # mcubes.export_mesh(vertices, triangles, mesh_file_path.as_posix, "mcube")
+        mesh_file_path: Path = mesh_dir / "mesh_{}_threshold{}.dae".format(
+            self.meshing_resolution, self.meshing_threshold
+        )
+        mcubes.export_mesh(vertices, triangles, mesh_file_path.as_posix(), "mcube")
 
 
 def main() -> None:

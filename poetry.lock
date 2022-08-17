@@ -1451,6 +1451,21 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
+name = "pycollada"
+version = "0.7.2"
+description = "python library for reading and writing collada documents"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+python-dateutil = ">=2.2"
+
+[package.extras]
+prettyprint = ["lxml"]
+validation = ["lxml"]
+
+[[package]]
 name = "pycparser"
 version = "2.21"
 description = "C parser in Python"
@@ -2181,7 +2196,7 @@ docs = ["jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "jaraco.packaging (>=9)
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "ddccb8ad0bdbadc38aa71f9a6000a8b2c9fffdfb0b5df8ee85badc4ff66ed9e6"
+content-hash = "1e5670c7a87a39beb52de048f001dc79dce6de108ab16470d49616c86a16a326"
 
 [metadata.files]
 absl-py = [
@@ -3165,6 +3180,9 @@ pyasn1-modules = [
 pycodestyle = [
     {file = "pycodestyle-2.8.0-py2.py3-none-any.whl", hash = "sha256:720f8b39dde8b293825e7ff02c475f3077124006db4f440dcbc9a20b76548a20"},
     {file = "pycodestyle-2.8.0.tar.gz", hash = "sha256:eddd5847ef438ea1c7870ca7eb78a9d47ce0cdb4851a5523949f2601d0cbbe7f"},
+]
+pycollada = [
+    {file = "pycollada-0.7.2.tar.gz", hash = "sha256:70a2630ed499bdab718c0e61a3e6ae3698130d7e4654e89cdecde51bfdaea56f"},
 ]
 pycparser = [
     {file = "pycparser-2.21-py2.py3-none-any.whl", hash = "sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9"},
