@@ -73,6 +73,18 @@ $ poetry run python neddf/scripts/run_eval.py pretrained/bunny_smoke/
 
 You can download pretrained models of nerf_synthetic_dataset from [this link](https://drive.google.com/file/d/1YJnky8bye0WU-_yZbC0DCiF0rm-36s57/view?usp=sharing)
 
+## Visualize pretrained fields
+To visualize trained distance, density, aux.gradient and color fields, please run following command.
+```bash
+$ poetry run python neddf/scripts/fields_visualizer.py {pretrained files directory}
+```
+This visualizer draw fields by 2D slices. Following video is visualization example in lego scene(`pretrained/lego`)
+
+
+https://user-images.githubusercontent.com/26667016/184655073-1ca5f55c-0170-4c61-96aa-802aa9ccfc88.mp4
+
+
+
 ## Visualize for check dataset
 To visualize dataset, please run following command (override of dataset config is optional):
 ```bash

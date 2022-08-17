@@ -22,6 +22,8 @@ pytest-cov = "^3.0.0"
 pytest-mock = "^3.8.2"
 pytorch-memlab = "^0.2.4"
 open3d = "^0.15.2"
+PyMCubes = "^0.1.2"
+pycollada = "^0.7.2"
 
 [tool.poetry.group.dev.dependencies]
 pysen = {version = "0.10.2", extras = ["lint"]}
