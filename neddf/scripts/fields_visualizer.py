@@ -19,6 +19,7 @@ from scipy.spatial.transform import Rotation
 class FieldsVisualizer:
     def __init__(self, trainer: BaseTrainer, output_dir: Path) -> None:
         # Member variables to operate with gui
+        self.show_camera: bool = True
         self.show_rgb_image: bool = False
         self.show_bounding_box: bool = False
         self.show_visible_range: bool = False
@@ -77,6 +78,9 @@ class FieldsVisualizer:
             "Visible options", 0, gui.Margins(em, 0, 0, 0)
         )
         show_option_layout.set_is_open(True)
+        show_camera_checkbox = gui.Checkbox("show cameras")
+        show_camera_checkbox.checked = self.show_camera
+        show_camera_checkbox.set_on_checked(self._on_show_camera)
         show_rgb_checkbox = gui.Checkbox("show rgb images")
         show_rgb_checkbox.checked = self.show_rgb_image
         show_rgb_checkbox.set_on_checked(self._on_show_rgb_image)
@@ -87,7 +91,7 @@ class FieldsVisualizer:
         show_visible_range_checkbox.checked = self.show_visible_range
         show_visible_range_checkbox.set_on_checked(self._on_show_visible_range)
         show_option_layout.add_stretch()
-        show_option_layout.add_child(gui.Label("Viewer options"))
+        show_option_layout.add_child(show_camera_checkbox)
         show_option_layout.add_child(show_rgb_checkbox)
         show_option_layout.add_child(show_bb_checkbox)
         show_option_layout.add_child(show_visible_range_checkbox)
@@ -153,6 +157,24 @@ class FieldsVisualizer:
         meshing_button_layout.add_child(meshing_threshold)
         meshing_button_layout.add_child(meshing_button)
 
+        # Dataset
+        dataset_layout = gui.CollapsableVert(
+            "Dataset Information", 0, gui.Margins(em, 0, 0, 0)
+        )
+        dataset_layout.set_is_open(True)
+        dataset_dir = self.trainer.dataset.dataset_dir
+        data_path = dataset_dir / "train/r_8.png"
+        dataset_size_label = "image size: {} x {}".format(
+            self.trainer.dataset.image_width,
+            self.trainer.dataset.image_height
+        )
+        rgb = self.trainer.dataset[8]["rgb_images"].astype(np.uint8)
+        dataset_image = gui.ImageWidget()#data_path.as_posix())
+        dataset_image.update_image(o3d.geometry.Image(rgb))
+        dataset_layout.add_child(gui.Label("data: {}".format(str(dataset_dir))))
+        dataset_layout.add_child(gui.Label(dataset_size_label))
+        dataset_layout.add_child(dataset_image)
+
         # Refresh button
         # refresh_button_layout = gui.Vert()
         # refresh_button = gui.Button("Refresh render")
@@ -170,6 +192,8 @@ class FieldsVisualizer:
         settings_panel.add_child(visible_range_layout)
         settings_panel.add_fixed(separation_height)
         settings_panel.add_child(meshing_button_layout)
+        settings_panel.add_fixed(separation_height)
+        settings_panel.add_child(dataset_layout)
         # settings_panel.add_fixed(separation_height)
         # settings_panel.add_child(refresh_button_layout)
 
@@ -180,6 +204,10 @@ class FieldsVisualizer:
         self.refresh_render()
 
     def _on_refresh_render(self) -> None:
+        self.refresh_render()
+
+    def _on_show_camera(self, show: bool) -> None:
+        self.show_camera = show
         self.refresh_render()
 
     def _on_show_rgb_image(self, show: bool) -> None:
@@ -244,9 +272,10 @@ class FieldsVisualizer:
         self.scene.scene.clear_geometry()
 
         self.draw_coordinate_grid()
-        self.draw_camera_pyramid()
         self.draw_field_slice()
         self.draw_meshed_field()
+        if self.show_camera:
+            self.draw_camera_pyramid()
         if self.show_rgb_image:
             self.draw_camera_img()
         if self.show_bounding_box:
