@@ -163,13 +163,12 @@ class FieldsVisualizer:
         )
         dataset_layout.set_is_open(True)
         dataset_dir = self.trainer.dataset.dataset_dir
-        data_path = dataset_dir / "train/r_8.png"
+        # data_path = dataset_dir / "train/r_8.png"
         dataset_size_label = "image size: {} x {}".format(
-            self.trainer.dataset.image_width,
-            self.trainer.dataset.image_height
+            self.trainer.dataset.image_width, self.trainer.dataset.image_height
         )
         rgb = self.trainer.dataset[8]["rgb_images"].astype(np.uint8)
-        dataset_image = gui.ImageWidget()#data_path.as_posix())
+        dataset_image = gui.ImageWidget()  # data_path.as_posix())
         dataset_image.update_image(o3d.geometry.Image(rgb))
         dataset_layout.add_child(gui.Label("data: {}".format(str(dataset_dir))))
         dataset_layout.add_child(gui.Label(dataset_size_label))
