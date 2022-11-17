@@ -9,6 +9,7 @@ from neddf.camera import Camera
 from neddf.logger import NeRFTBLogger
 from neddf.trainer.base_trainer import BaseTrainer, LossFunctionType
 from numpy import ndarray
+from scipy import Rotation
 from torch import Tensor
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
@@ -34,9 +35,75 @@ class NeDDFTracker(BaseTrainer):
         # Use tensorboard Logger
         self.logger = NeRFTBLogger()
 
-    def run_track_all(self) -> None:
-        pass
+    def generate_random_dir(self) -> ndarray:
+        u = np.random.rand()
+        v = np.random.rand()
+        z = -2*u+1
+        x=np.sqrt(1-z*z)*np.cos(2*np.pi*v)
+        y=np.sqrt(1-z*z)*np.sin(2*np.pi*v)
+        return np.array([x,y,z])
         
+    def generate_initial_camera_poses(self) -> None:
+        var_pos = 0.5
+        var_rot = 0.3
+
+        self.gt_camera_params: List[ndarray] = []
+        self.initial_camera_params: List[ndarray] = []
+        self.target_cameras: List[Camera] = []
+        optim_params_list: List[Tensor] = []
+        for camera in self.cameras:
+            params_gt = camera.initial_params_np
+            pos_gt = params_gt[3:]
+            rot_gt = Rotation.from_rotvec(params_gt[:3])
+            self.gt_camera_params.append(params_gt)
+
+            rot_noise: Rotation = Rotation.from_rotvec(self.generate_random_dir() * np.random.randn(1) * var_rot)
+            params: np.zeros(6, np.float32)
+            params[:3] = (rot_noise * rot_gt).as_rotvec()
+            params[3:] = rot_noise.apply(pos_gt) + self.generate_random_dir() * np.random.randn(1) * var_pos
+            self.initial_camera_params.append(params)
+            target_camera: Camera =  Camera(self.camera_calib, params).to(self.device)
+            self.target_cameras.append(target_camera)
+            optim_params_list.append(target_camera.parameters())
+        self.optimizer = Adam(
+            optim_params_list,
+            lr=self.optimizer_lr,
+            weight_decay=self.optimizer_weight_decay,
+        )
+
+    def evaluate_camera_pose(self, source_camera, target_camera) -> Dict[str, float]:
+        source_camera.update_transform()
+        target_camera.update_transform()
+        source_rot = Rotation.from_matrix(source_camera.R.detach().cpu().numpy())
+        target_rot = Rotation.from_matrix(target_camera.R.detach().cpu().numpy())
+        source_trans = source_camera.T.detach().cpu().numpy()
+        target_trans = target_camera.T.detach().cpu().numpy()
+
+        rot_diff = source_rot.inv() * target_rot
+        rot_err_rad: float = np.sqrt(np.sum(np.square(rot_diff.as_rotvec())))
+        rot_err_deg: float = rot_err * 180.0 / 3.141592
+
+        trans_err: float = np.sqrt(np.sum(np.square(source_trans - target_trans)))
+
+        errors: Dict[str, float] = {
+            "rot_err": rot_err_deg,
+            "trans_err": trans_err,
+        }
+
+    def run_track_all(self) -> None:
+        self.generate_initial_camera_poses()
+        errors_all: Dict[str, List[float]] = {
+            "rot_err": [],
+            "trans_err": [],
+        }
+        for camera_id, target_camera in enumerate(self.target_cameras):
+            print("optimizing camera ", camera_id)
+            self.run_track_photometric_step(camera_id, target_camera)
+            errors = self.evaluate_camera_pose(self.cameras[camera_id], target_camera)
+            print(errors)
+            for key in errors:
+                errors_all[key].append(errors[key])
+
 
     def run_track_photometric_step(self, camera_id: int, target_camera: Camera) -> float:
         self.logger.write_batchstart()
